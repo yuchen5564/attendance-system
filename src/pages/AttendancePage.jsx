@@ -1,36 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Download, Filter, Search } from 'lucide-react';
+import { 
+  Card, 
+  Table, 
+  Button, 
+  DatePicker, 
+  Select, 
+  Space, 
+  Typography, 
+  Tag,
+  Row,
+  Col,
+  App,
+  Empty
+} from 'antd';
+import { 
+  CalendarOutlined, 
+  DownloadOutlined, 
+  FilterOutlined, 
+  ClockCircleOutlined,
+  LoginOutlined,
+  LogoutOutlined
+} from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../firebase/firestoreService';
 import LoadingSpinner from '../components/LoadingSpinner';
-import Pagination from '../components/Pagination';
-import { usePagination } from '../hooks/usePagination';
-import toast from 'react-hot-toast';
+import dayjs from 'dayjs';
+
+const { Title } = Typography;
+const { RangePicker } = DatePicker;
+const { Option } = Select;
 
 const AttendancePage = () => {
   const { userData, isAdmin, isManager } = useAuth();
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(true);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [filteredRecords, setFilteredRecords] = useState([]);
   const [users, setUsers] = useState([]);
   const [filters, setFilters] = useState({
-    startDate: '',
-    endDate: '',
+    dateRange: null,
     userId: userData?.uid || '',
     type: ''
   });
-
-  // 使用分頁 Hook
-  const {
-    currentPage,
-    itemsPerPage,
-    totalPages,
-    totalItems,
-    paginatedData,
-    setCurrentPage,
-    setItemsPerPage,
-    resetToFirstPage
-  } = usePagination(filteredRecords, 25); // 預設每頁 25 筆
 
   useEffect(() => {
     loadData();
@@ -39,11 +50,6 @@ const AttendancePage = () => {
   useEffect(() => {
     applyFilters();
   }, [attendanceRecords, filters]);
-
-  // 當篩選結果改變時，重置到第一頁
-  useEffect(() => {
-    resetToFirstPage();
-  }, [filteredRecords.length, resetToFirstPage]);
 
   const loadData = async () => {
     if (!userData) return;
@@ -67,7 +73,7 @@ const AttendancePage = () => {
       }
     } catch (error) {
       console.error('載入出勤記錄失敗:', error);
-      toast.error('載入數據失敗');
+      message.error('載入數據失敗');
     } finally {
       setLoading(false);
     }
@@ -87,20 +93,11 @@ const AttendancePage = () => {
     }
 
     // 按日期範圍篩選
-    if (filters.startDate) {
-      const startDate = new Date(filters.startDate);
+    if (filters.dateRange && filters.dateRange.length === 2) {
+      const [startDate, endDate] = filters.dateRange;
       filtered = filtered.filter(record => {
-        const recordDate = record.timestamp.toDate ? record.timestamp.toDate() : new Date(record.timestamp);
-        return recordDate >= startDate;
-      });
-    }
-
-    if (filters.endDate) {
-      const endDate = new Date(filters.endDate);
-      endDate.setHours(23, 59, 59, 999); // 包含整天
-      filtered = filtered.filter(record => {
-        const recordDate = record.timestamp.toDate ? record.timestamp.toDate() : new Date(record.timestamp);
-        return recordDate <= endDate;
+        const recordDate = dayjs(record.timestamp.toDate ? record.timestamp.toDate() : new Date(record.timestamp));
+        return recordDate.isBetween(startDate, endDate, 'day', '[]');
       });
     }
 
@@ -109,7 +106,7 @@ const AttendancePage = () => {
 
   const exportRecords = () => {
     if (filteredRecords.length === 0) {
-      toast.error('沒有數據可以匯出');
+      message.error('沒有數據可以匯出');
       return;
     }
 
@@ -117,10 +114,10 @@ const AttendancePage = () => {
       ['日期', '時間', '員工姓名', '類型', '位置'],
       ...filteredRecords.map(record => {
         const user = users.find(u => u.uid === record.userId);
-        const date = record.timestamp.toDate ? record.timestamp.toDate() : new Date(record.timestamp);
+        const date = dayjs(record.timestamp.toDate ? record.timestamp.toDate() : new Date(record.timestamp));
         return [
-          date.toLocaleDateString('zh-TW'),
-          date.toLocaleTimeString('zh-TW'),
+          date.format('YYYY-MM-DD'),
+          date.format('HH:mm:ss'),
           user?.name || '未知用戶',
           record.type === 'clock_in' ? '上班' : '下班',
           record.location ? `${record.location.latitude}, ${record.location.longitude}` : '無'
@@ -133,13 +130,13 @@ const AttendancePage = () => {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `出勤記錄_${new Date().toLocaleDateString('zh-TW')}.csv`);
+    link.setAttribute('download', `出勤記錄_${dayjs().format('YYYY-MM-DD')}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    toast.success('記錄已匯出');
+    message.success('記錄已匯出');
   };
 
   const getUserName = (userId) => {
@@ -147,13 +144,53 @@ const AttendancePage = () => {
     return user?.name || '未知用戶';
   };
 
-  const formatDateTime = (timestamp) => {
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return {
-      date: date.toLocaleDateString('zh-TW'),
-      time: date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
-    };
-  };
+  const columns = [
+    {
+      title: '日期',
+      dataIndex: 'timestamp',
+      key: 'date',
+      width: 120,
+      render: (timestamp) => {
+        const date = dayjs(timestamp.toDate ? timestamp.toDate() : new Date(timestamp));
+        return date.format('YYYY-MM-DD');
+      },
+    },
+    {
+      title: '時間',
+      dataIndex: 'timestamp',
+      key: 'time',
+      width: 100,
+      render: (timestamp) => {
+        const date = dayjs(timestamp.toDate ? timestamp.toDate() : new Date(timestamp));
+        return date.format('HH:mm:ss');
+      },
+    },
+  ];
+
+  if (isAdmin || isManager) {
+    columns.push({
+      title: '員工',
+      dataIndex: 'userId',
+      key: 'user',
+      width: 120,
+      render: (userId) => getUserName(userId),
+    });
+  }
+
+  columns.push({
+    title: '類型',
+    dataIndex: 'type',
+    key: 'type',
+    width: 100,
+    render: (type) => (
+      <Tag 
+        icon={type === 'clock_in' ? <LoginOutlined /> : <LogoutOutlined />}
+        color={type === 'clock_in' ? 'green' : 'orange'}
+      >
+        {type === 'clock_in' ? '上班' : '下班'}
+      </Tag>
+    ),
+  });
 
   if (loading) {
     return <LoadingSpinner text="載入出勤記錄中..." />;
@@ -161,137 +198,119 @@ const AttendancePage = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1>出勤記錄</h1>
-        <button
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <Title level={2} style={{ margin: 0 }}>出勤記錄</Title>
+        <Button
+          type="primary"
+          icon={<DownloadOutlined />}
           onClick={exportRecords}
-          className="btn btn-primary"
           disabled={filteredRecords.length === 0}
         >
-          <Download size={20} />
           匯出記錄
-        </button>
+        </Button>
       </div>
 
       {/* 篩選器 */}
-      <div className="card mb-6">
-        <div className="card-header">
-          <div className="flex items-center gap-2">
-            <Filter size={20} />
-            <h3>篩選條件</h3>
-          </div>
-        </div>
-        <div className="card-body">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="form-group">
-              <label className="form-label">開始日期</label>
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
-                className="form-input"
+      <Card 
+        title={
+          <Space>
+            <FilterOutlined />
+            篩選條件
+          </Space>
+        }
+        style={{ marginBottom: '24px' }}
+      >
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} md={8}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
+                日期範圍
+              </label>
+              <RangePicker
+                style={{ width: '100%' }}
+                value={filters.dateRange}
+                onChange={(dates) => setFilters(prev => ({ ...prev, dateRange: dates }))}
+                placeholder={['開始日期', '結束日期']}
               />
             </div>
+          </Col>
 
-            <div className="form-group">
-              <label className="form-label">結束日期</label>
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
-                className="form-input"
-              />
-            </div>
-
-            {(isAdmin || isManager) && (
-              <div className="form-group">
-                <label className="form-label">員工</label>
-                <select
+          {(isAdmin || isManager) && (
+            <Col xs={24} sm={12} md={8}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
+                  員工
+                </label>
+                <Select
+                  style={{ width: '100%' }}
                   value={filters.userId}
-                  onChange={(e) => setFilters(prev => ({ ...prev, userId: e.target.value }))}
-                  className="form-select"
+                  onChange={(value) => setFilters(prev => ({ ...prev, userId: value }))}
+                  placeholder="選擇員工"
+                  allowClear
                 >
-                  <option value="">所有員工</option>
+                  <Option value="">所有員工</Option>
                   {users.map(user => (
-                    <option key={user.uid} value={user.uid}>
+                    <Option key={user.uid} value={user.uid}>
                       {user.name}
-                    </option>
+                    </Option>
                   ))}
-                </select>
+                </Select>
               </div>
-            )}
+            </Col>
+          )}
 
-            <div className="form-group">
-              <label className="form-label">類型</label>
-              <select
+          <Col xs={24} sm={12} md={8}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
+                類型
+              </label>
+              <Select
+                style={{ width: '100%' }}
                 value={filters.type}
-                onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
-                className="form-select"
+                onChange={(value) => setFilters(prev => ({ ...prev, type: value }))}
+                placeholder="選擇類型"
+                allowClear
               >
-                <option value="">所有類型</option>
-                <option value="clock_in">上班打卡</option>
-                <option value="clock_out">下班打卡</option>
-              </select>
+                <Option value="">所有類型</Option>
+                <Option value="clock_in">上班打卡</Option>
+                <Option value="clock_out">下班打卡</Option>
+              </Select>
             </div>
-          </div>
-        </div>
-      </div>
+          </Col>
+        </Row>
+      </Card>
 
       {/* 記錄表格 */}
-      <div className="card">
-        <div className="card-header">
-          <h3>出勤記錄 ({totalItems} 筆)</h3>
-        </div>
-        <div className="card-body">
-          {filteredRecords.length === 0 ? (
-            <div className="text-center py-8">
-              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">沒有找到符合條件的記錄</p>
-            </div>
-          ) : (
-            <>
-              <div className="table-container">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>日期</th>
-                      <th>時間</th>
-                      {(isAdmin || isManager) && <th>員工</th>}
-                      <th>類型</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedData.map((record) => {
-                      const { date, time } = formatDateTime(record.timestamp);
-                      return (
-                        <tr key={record.id}>
-                          <td>{date}</td>
-                          <td>{time}</td>
-                          {(isAdmin || isManager) && <td>{getUserName(record.userId)}</td>}
-                          <td>
-                            <span className={`status-badge ${record.type === 'clock_in' ? 'approved' : 'pending'}`}>
-                              {record.type === 'clock_in' ? '上班' : '下班'}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* 分頁組件 */}
-              <Pagination
-                currentPage={currentPage}
-                totalItems={totalItems}
-                itemsPerPage={itemsPerPage}
-                onPageChange={setCurrentPage}
-                onItemsPerPageChange={setItemsPerPage}
+      <Card 
+        title={
+          <Space>
+            <ClockCircleOutlined />
+            出勤記錄 ({filteredRecords.length} 筆)
+          </Space>
+        }
+      >
+        <Table
+          columns={columns}
+          dataSource={filteredRecords}
+          rowKey="id"
+          pagination={{
+            pageSize: 20,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) =>
+              `第 ${range[0]}-${range[1]} 條，共 ${total} 條記錄`,
+          }}
+          locale={{
+            emptyText: (
+              <Empty
+                image={<CalendarOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />}
+                description="沒有找到符合條件的記錄"
               />
-            </>
-          )}
-        </div>
-      </div>
+            )
+          }}
+          scroll={{ x: 800 }}
+        />
+      </Card>
     </div>
   );
 };

@@ -1,133 +1,175 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, Eye, EyeOff, Clock } from 'lucide-react';
+import { 
+  Form, 
+  Input, 
+  Button, 
+  Card, 
+  Typography, 
+  Space, 
+  Alert,
+  App
+} from 'antd';
+import { 
+  LoginOutlined, 
+  EyeInvisibleOutlined, 
+  EyeTwoTone, 
+  ClockCircleOutlined,
+  UserOutlined,
+  LockOutlined
+} from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
-import toast from 'react-hot-toast';
+
+const { Title, Text } = Typography;
 
 const LoginPage = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const { message } = App.useApp();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!email || !password) {
-      toast.error('請填寫所有欄位');
-      return;
-    }
-
+  const onFinish = async (values) => {
     setLoading(true);
     try {
-      await signIn(email, password);
-      toast.success('登入成功！');
+      await signIn(values.email, values.password);
+      message.success('登入成功！');
       navigate('/dashboard');
     } catch (error) {
       console.error('登入錯誤:', error);
-      if (error.code === 'auth/user-not-found') {
-        toast.error('找不到此用戶');
-      } else if (error.code === 'auth/wrong-password') {
-        toast.error('密碼錯誤');
-      } else if (error.code === 'auth/invalid-email') {
-        toast.error('無效的電子郵件格式');
-      } else {
-        toast.error('登入失敗，請稍後再試');
+      let errorMessage = '登入失敗，請稍後再試';
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+          errorMessage = '找不到此用戶';
+          break;
+        case 'auth/wrong-password':
+          errorMessage = '密碼錯誤';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = '無效的電子郵件格式';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = '登入嘗試過於頻繁，請稍後再試';
+          break;
       }
+      
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
-          <div className="flex items-center justify-center mb-4">
-            <Clock className="w-12 h-12 text-blue-600" />
-          </div>
-          <h1 className="login-title">企業打卡系統</h1>
-          <p className="login-subtitle">請登入您的帳戶</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="login-form">
-          <div className="form-group">
-            <label htmlFor="email" className="form-label">
-              電子郵件
-            </label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="form-input"
-              placeholder="請輸入您的電子郵件"
-              required
+    <div 
+      style={{
+        height: '100vh',
+        width: '100vw',
+        overflow: 'hidden',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+        boxSizing: 'border-box',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+      }}
+    >
+      <Card
+        style={{
+          width: '100%',
+          maxWidth: '400px',
+          maxHeight: 'calc(100vh - 32px)',
+          overflow: 'auto',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        }}
+        bodyStyle={{
+          padding: '24px',
+        }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{ marginBottom: '12px' }}>
+            <ClockCircleOutlined 
+              style={{ 
+                fontSize: '40px', 
+                color: '#3b82f6',
+                backgroundColor: '#eff6ff',
+                padding: '12px',
+                borderRadius: '50%',
+              }} 
             />
           </div>
-
-          <div className="form-group">
-            <label htmlFor="password" className="form-label">
-              密碼
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="form-input"
-                placeholder="請輸入您的密碼"
-                required
-                style={{ paddingRight: '3rem' }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '0.75rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: '#64748b'
-                }}
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn btn-primary btn-lg"
-            style={{ width: '100%' }}
-          >
-            {loading ? (
-              <>
-                <div className="loading-spinner" style={{ width: '1rem', height: '1rem' }} />
-                登入中...
-              </>
-            ) : (
-              <>
-                <LogIn size={20} />
-                登入
-              </>
-            )}
-          </button>
-        </form>
-
-        <div className="mt-4" style={{ textAlign: 'center', fontSize: '0.875rem', color: '#64748b' }}>
-          <p>預設帳戶：</p>
-          <p>管理員: admin@company.com / admin123</p>
-          <p>員工: employee@company.com / employee123</p>
+          <Title level={2} style={{ marginBottom: '4px', fontSize: '24px' }}>
+            企業打卡系統
+          </Title>
+          <Text type="secondary">請登入您的帳戶</Text>
         </div>
-      </div>
+
+        <Form
+          name="login"
+          onFinish={onFinish}
+          layout="vertical"
+          autoComplete="off"
+          size="middle"
+        >
+          <Form.Item
+            name="email"
+            label="電子郵件"
+            rules={[
+              { required: true, message: '請輸入電子郵件' },
+              { type: 'email', message: '請輸入有效的電子郵件格式' }
+            ]}
+            style={{ marginBottom: '16px' }}
+          >
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="請輸入您的電子郵件"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="password"
+            label="密碼"
+            rules={[{ required: true, message: '請輸入密碼' }]}
+            style={{ marginBottom: '20px' }}
+          >
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="請輸入您的密碼"
+              iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+            />
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: '16px' }}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={loading}
+              size="large"
+              block
+              icon={<LoginOutlined />}
+            >
+              {loading ? '登入中...' : '登入'}
+            </Button>
+          </Form.Item>
+        </Form>
+
+        <Alert
+          message="預設帳戶"
+          description={
+            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+              <Text style={{ fontSize: '12px' }}>管理員: admin@company.com / admin123</Text>
+              <Text style={{ fontSize: '12px' }}>員工: employee@company.com / employee123</Text>
+            </Space>
+          }
+          type="info"
+          showIcon
+          style={{ margin: 0 }}
+        />
+      </Card>
     </div>
   );
 };

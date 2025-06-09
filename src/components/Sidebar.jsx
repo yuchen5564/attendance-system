@@ -1,106 +1,85 @@
 import React from 'react';
+import { Menu } from 'antd';
 import { 
-  LayoutDashboard, 
-  Clock, 
-  Calendar, 
-  Users, 
-  FileText, 
-  Settings,
-  BarChart3,
-  X
-} from 'lucide-react';
+  DashboardOutlined,
+  ClockCircleOutlined,
+  CalendarOutlined,
+  TeamOutlined,
+  BarChartOutlined,
+  SettingOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 
-const Sidebar = ({ currentPage, setCurrentPage, sidebarOpen, setSidebarOpen }) => {
-  const { userData, isAdmin, isManager } = useAuth();
+const Sidebar = ({ currentPage, setCurrentPage, collapsed }) => {
+  const { userData } = useAuth();
 
   const navigationItems = [
     {
       key: 'dashboard',
-      name: '儀表板',
-      icon: LayoutDashboard,
+      icon: <DashboardOutlined />,
+      label: '儀表板',
       roles: ['admin', 'manager', 'employee']
     },
     {
       key: 'attendance',
-      name: '打卡紀錄',
-      icon: Clock,
+      icon: <ClockCircleOutlined />,
+      label: '打卡紀錄',
       roles: ['admin', 'manager', 'employee']
     },
     {
       key: 'leave-requests',
-      name: '請假管理',
-      icon: Calendar,
+      icon: <CalendarOutlined />,
+      label: '請假管理',
       roles: ['admin', 'manager', 'employee']
     },
     {
       key: 'employees',
-      name: '員工管理',
-      icon: Users,
+      icon: <TeamOutlined />,
+      label: '員工管理',
       roles: ['admin', 'manager']
     },
     {
       key: 'reports',
-      name: '報表分析',
-      icon: BarChart3,
+      icon: <BarChartOutlined />,
+      label: '報表分析',
       roles: ['admin', 'manager']
     },
     {
       key: 'settings',
-      name: '系統設定',
-      icon: Settings,
+      icon: <SettingOutlined />,
+      label: '系統設定',
       roles: ['admin']
     }
   ];
-
-  const isActive = (pageKey) => currentPage === pageKey;
 
   const canAccess = (roles) => {
     return roles.includes(userData?.role);
   };
 
-  const handleNavClick = (pageKey) => {
-    setCurrentPage(pageKey);
-    // 在手機版本關閉側邊欄
-    if (window.innerWidth <= 768) {
-      setSidebarOpen(false);
-    }
+  const handleMenuClick = ({ key }) => {
+    setCurrentPage(key);
   };
 
-  return (
-    <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-      {/* 手機版關閉按鈕 - 只在手機版顯示 */}
-      <div className="md:hidden flex justify-end p-4">
-        <button
-          onClick={() => setSidebarOpen(false)}
-          className="p-2 rounded-lg hover:bg-gray-100"
-        >
-          <X size={20} />
-        </button>
-      </div>
+  const menuItems = navigationItems
+    .filter(item => canAccess(item.roles))
+    .map(item => ({
+      key: item.key,
+      icon: item.icon,
+      label: item.label,
+    }));
 
-      <nav>
-        <ul className="sidebar-nav">
-          {navigationItems.map((item) => {
-            if (!canAccess(item.roles)) return null;
-            
-            const Icon = item.icon;
-            
-            return (
-              <li key={item.key} className="sidebar-nav-item">
-                <button
-                  onClick={() => handleNavClick(item.key)}
-                  className={`sidebar-nav-link ${isActive(item.key) ? 'active' : ''}`}
-                  style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none' }}
-                >
-                  <Icon className="sidebar-nav-icon" />
-                  <span>{item.name}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+  return (
+    <div style={{ height: '100vh', paddingTop: '16px' }}>
+      <Menu
+        mode="inline"
+        selectedKeys={[currentPage]}
+        onClick={handleMenuClick}
+        items={menuItems}
+        style={{
+          height: '100%',
+          borderRight: 0,
+        }}
+      />
     </div>
   );
 };

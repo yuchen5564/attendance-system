@@ -1,75 +1,162 @@
 import React from 'react';
-import { LogOut, Clock, User, Menu } from 'lucide-react';
+import { Layout, Button, Dropdown, Avatar, Space, Typography, Tag, App } from 'antd';
+import { 
+  LogoutOutlined, 
+  ClockCircleOutlined, 
+  UserOutlined,
+  MenuUnfoldOutlined,
+  MenuFoldOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
-import toast from 'react-hot-toast';
 
-const Header = ({ sidebarOpen, setSidebarOpen }) => {
+const { Header: AntHeader } = Layout;
+const { Text } = Typography;
+
+const Header = ({ collapsed, setCollapsed }) => {
   const { userData, signOut } = useAuth();
+  const { message } = App.useApp();
 
   const handleSignOut = async () => {
     try {
       await signOut();
-      toast.success('已成功登出');
+      message.success('已成功登出');
     } catch (error) {
-      toast.error('登出失敗');
+      message.error('登出失敗');
     }
   };
 
   const getRoleText = (role) => {
     switch (role) {
       case 'admin':
-        return '系統管理員';
+        return { text: '系統管理員', color: 'red' };
       case 'manager':
-        return '部門主管';
+        return { text: '部門主管', color: 'blue' };
       case 'employee':
-        return '一般員工';
+        return { text: '一般員工', color: 'green' };
       default:
-        return '員工';
+        return { text: '員工', color: 'default' };
     }
   };
 
+  const roleInfo = getRoleText(userData?.role);
+
+  const userMenuItems = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: (
+        <div>
+          <div style={{ fontWeight: 'bold' }}>{userData?.name || '用戶'}</div>
+          <div style={{ fontSize: '12px', color: '#666' }}>
+            {userData?.email}
+          </div>
+        </div>
+      ),
+      disabled: true,
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: '登出',
+      onClick: handleSignOut,
+    },
+  ];
+
   return (
-    <header className="header">
-      <div className="flex items-center gap-4">
-        {/* 手機版漢堡選單 - 只在手機版顯示 */}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="md:hidden p-2 rounded-lg hover:bg-gray-100"
-        >
-          <Menu size={20} />
-        </button>
+    <AntHeader
+      style={{
+        padding: '0 24px',
+        background: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderBottom: '1px solid #f0f0f0',
+        position: 'sticky',
+        top: 0,
+        zIndex: 1,
+        height: '64px', // 固定高度
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <Button
+          type="text"
+          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          onClick={() => setCollapsed(!collapsed)}
+          style={{
+            fontSize: '16px',
+            width: 64,
+            height: 64,
+          }}
+        />
         
-        <div className="header-logo">
-          <Clock className="w-8 h-8 text-blue-600" />
-          <span>企業打卡系統</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <ClockCircleOutlined style={{ fontSize: '24px', color: '#3b82f6' }} />
+          <Text strong style={{ fontSize: '18px' }}>
+            企業打卡系統
+          </Text>
         </div>
       </div>
 
-      <div className="header-nav">
-        <div className="header-user">
-          <div className="flex items-center gap-2">
-            <User className="w-5 h-5 text-gray-500" />
-            <div className="header-user-info">
-              <div className="header-user-name">
-                {userData?.name || '用戶'}
-              </div>
-              <div className="header-user-role">
-                {getRoleText(userData?.role)} • {userData?.department || '未設定部門'}
-              </div>
-            </div>
+      <Space size="middle" align="center">
+        {/* 桌面版：顯示完整用戶信息 */}
+        <div 
+          style={{ 
+            textAlign: 'right', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'flex-end',
+            minWidth: '120px',
+          }}
+          className="user-info-desktop" // 可以用 CSS 控制響應式顯示
+        >
+          <Text strong style={{ whiteSpace: 'nowrap', lineHeight: '20px' }}>
+            {userData?.name || '用戶'}
+          </Text>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '6px', 
+            marginTop: '2px',
+            flexWrap: 'nowrap'
+          }}>
+            <Tag color={roleInfo.color} size="small" style={{ margin: 0, flexShrink: 0 }}>
+              {roleInfo.text}
+            </Tag>
+            <Text 
+              type="secondary" 
+              style={{ 
+                fontSize: '11px', 
+                whiteSpace: 'nowrap',
+                maxWidth: '80px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}
+            >
+              {userData?.department || '未設定'}
+            </Text>
           </div>
-          
-          <button
-            onClick={handleSignOut}
-            className="btn btn-outline btn-sm"
-            title="登出"
-          >
-            <LogOut size={16} />
-            <span className="hidden sm:inline">登出</span>
-          </button>
         </div>
-      </div>
-    </header>
+        
+        <Dropdown
+          menu={{ items: userMenuItems }}
+          placement="bottomRight"
+          arrow
+        >
+          <Avatar 
+            size="large" 
+            icon={<UserOutlined />}
+            style={{ 
+              backgroundColor: '#3b82f6',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          />
+        </Dropdown>
+      </Space>
+    </AntHeader>
   );
 };
 

@@ -1,14 +1,27 @@
 import React, { useState } from 'react';
-import { X, Calendar, FileText } from 'lucide-react';
+import { 
+  Modal, 
+  Form, 
+  Select, 
+  DatePicker, 
+  Input, 
+  Alert, 
+  Space, 
+  Button,
+  App
+} from 'antd';
+import { CalendarOutlined, FileTextOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
+
+const { Option } = Select;
+const { TextArea } = Input;
+const { RangePicker } = DatePicker;
 
 const LeaveRequestModal = ({ onClose, onSubmit }) => {
-  const [formData, setFormData] = useState({
-    type: '',
-    startDate: '',
-    endDate: '',
-    reason: ''
-  });
+  const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [dateRange, setDateRange] = useState(null);
+  const { message } = App.useApp();
 
   const leaveTypes = [
     { value: 'annual', label: '年假' },
@@ -21,148 +34,135 @@ const LeaveRequestModal = ({ onClose, onSubmit }) => {
     { value: 'other', label: '其他' }
   ];
 
-  const calculateDays = () => {
-    if (!formData.startDate || !formData.endDate) return 0;
+  const calculateDays = (dates) => {
+    if (!dates || dates.length !== 2) return 0;
     
-    const start = new Date(formData.startDate);
-    const end = new Date(formData.endDate);
-    const diffTime = Math.abs(end - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // 包含開始和結束日
+    const [start, end] = dates;
+    const diffDays = end.diff(start, 'day') + 1; // 包含開始和結束日
     
     return diffDays;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!formData.type || !formData.startDate || !formData.endDate || !formData.reason.trim()) {
-      alert('請填寫所有必填欄位');
-      return;
-    }
+  const handleDateChange = (dates) => {
+    setDateRange(dates);
+  };
 
-    if (new Date(formData.startDate) > new Date(formData.endDate)) {
-      alert('結束日期不能早於開始日期');
-      return;
-    }
-
+  const handleSubmit = async (values) => {
     setLoading(true);
     try {
-      await onSubmit({
-        ...formData,
-        startDate: new Date(formData.startDate),
-        endDate: new Date(formData.endDate),
-        days: calculateDays()
-      });
+      const submitData = {
+        type: values.type,
+        startDate: values.dateRange[0].toDate(),
+        endDate: values.dateRange[1].toDate(),
+        reason: values.reason,
+        days: calculateDays(values.dateRange)
+      };
+
+      await onSubmit(submitData);
+      onClose();
     } catch (error) {
       console.error('提交請假申請失敗:', error);
+      message.error('提交失敗，請稍後再試');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const disabledDate = (current) => {
+    // 不能選擇過去的日期
+    return current && current < dayjs().startOf('day');
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">
-            <Calendar className="w-5 h-5 inline mr-2" />
-            新增請假申請
-          </h2>
-          <button onClick={onClose} className="modal-close">
-            <X size={20} />
-          </button>
-        </div>
+    <Modal
+      title={
+        <Space>
+          <CalendarOutlined />
+          新增請假申請
+        </Space>
+      }
+      open={true}
+      onCancel={onClose}
+      footer={null}
+      width={500}
+      destroyOnClose
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        preserve={false}
+      >
+        <Form.Item
+          name="type"
+          label="請假類型"
+          rules={[{ required: true, message: '請選擇請假類型' }]}
+        >
+          <Select placeholder="請選擇請假類型">
+            {leaveTypes.map(type => (
+              <Option key={type.value} value={type.value}>
+                {type.label}
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
 
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body">
-            <div className="form-group">
-              <label className="form-label">請假類型 *</label>
-              <select
-                value={formData.type}
-                onChange={(e) => handleChange('type', e.target.value)}
-                className="form-select"
-                required
-              >
-                <option value="">請選擇請假類型</option>
-                {leaveTypes.map(type => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <Form.Item
+          name="dateRange"
+          label="請假日期"
+          rules={[{ required: true, message: '請選擇請假日期' }]}
+        >
+          <RangePicker
+            style={{ width: '100%' }}
+            placeholder={['開始日期', '結束日期']}
+            disabledDate={disabledDate}
+            onChange={handleDateChange}
+          />
+        </Form.Item>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="form-group">
-                <label className="form-label">開始日期 *</label>
-                <input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => handleChange('startDate', e.target.value)}
-                  className="form-input"
-                  required
-                />
-              </div>
+        {dateRange && dateRange.length === 2 && (
+          <Alert
+            message={
+              <Space>
+                <FileTextOutlined />
+                {`請假天數：${calculateDays(dateRange)} 天`}
+              </Space>
+            }
+            type="info"
+            showIcon
+            style={{ marginBottom: '16px' }}
+          />
+        )}
 
-              <div className="form-group">
-                <label className="form-label">結束日期 *</label>
-                <input
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) => handleChange('endDate', e.target.value)}
-                  className="form-input"
-                  min={formData.startDate}
-                  required
-                />
-              </div>
-            </div>
+        <Form.Item
+          name="reason"
+          label="請假原因"
+          rules={[{ required: true, message: '請填寫請假原因' }]}
+        >
+          <TextArea
+            rows={4}
+            placeholder="請詳細說明請假原因..."
+            maxLength={500}
+            showCount
+          />
+        </Form.Item>
 
-            {formData.startDate && formData.endDate && (
-              <div className="alert alert-info">
-                <FileText className="w-4 h-4 inline mr-2" />
-                請假天數：{calculateDays()} 天
-              </div>
-            )}
-
-            <div className="form-group">
-              <label className="form-label">請假原因 *</label>
-              <textarea
-                value={formData.reason}
-                onChange={(e) => handleChange('reason', e.target.value)}
-                className="form-textarea"
-                placeholder="請詳細說明請假原因..."
-                required
-              />
-            </div>
-          </div>
-
-          <div className="modal-footer">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-secondary"
-              disabled={loading}
-            >
+        <Form.Item style={{ marginBottom: 0, marginTop: '24px' }}>
+          <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+            <Button onClick={onClose}>
               取消
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={loading}
+            </Button>
+            <Button 
+              type="primary" 
+              htmlType="submit" 
+              loading={loading}
             >
-              {loading ? '提交中...' : '提交申請'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+              提交申請
+            </Button>
+          </Space>
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 };
 

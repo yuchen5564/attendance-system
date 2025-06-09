@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import { ConfigProvider, Layout, theme, App as AntApp } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
+import dayjs from 'dayjs';
+import 'dayjs/locale/zh-cn';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoadingSpinner from './components/LoadingSpinner';
 import InitializeSystem from './components/InitializeSystem';
@@ -14,10 +17,10 @@ import EmployeesPage from './pages/EmployeesPage';
 import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
 
-// 樣式檔案
-import './App.css';
-import './styles/main.css';
-import './styles/components.css';
+// 設定 dayjs 語言
+dayjs.locale('zh-cn');
+
+const { Content, Sider } = Layout;
 
 // 受保護的路由組件
 const ProtectedRoute = ({ children }) => {
@@ -36,7 +39,12 @@ const ProtectedRoute = ({ children }) => {
 
 // 主佈局組件
 const MainLayout = ({ currentPage, setCurrentPage }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  
+  const {
+    token: { colorBgContainer },
+  } = theme.useToken();
 
   const renderCurrentPage = () => {
     switch (currentPage) {
@@ -58,34 +66,52 @@ const MainLayout = ({ currentPage, setCurrentPage }) => {
   };
 
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-      </header>
-      
-      <div className="app-main">
-        <aside className="app-sidebar">
-          <Sidebar 
-            currentPage={currentPage} 
-            setCurrentPage={setCurrentPage}
-            sidebarOpen={sidebarOpen}
-            setSidebarOpen={setSidebarOpen}
-          />
-        </aside>
-        
-        <main className="app-content">
-          {renderCurrentPage()}
-        </main>
-      </div>
-      
-      {/* 手機版背景遮罩 */}
-      {sidebarOpen && (
-        <div 
-          className="sidebar-overlay show"
-          onClick={() => setSidebarOpen(false)}
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sider
+        theme="light"
+        collapsible
+        collapsed={collapsed}
+        onCollapse={(value) => setCollapsed(value)}
+        breakpoint="lg"
+        onBreakpoint={(broken) => {
+          if (broken) {
+            setCollapsed(true);
+          }
+        }}
+        style={{
+          overflow: 'auto',
+          height: '100vh',
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          bottom: 0,
+        }}
+      >
+        <Sidebar 
+          currentPage={currentPage} 
+          setCurrentPage={setCurrentPage}
+          collapsed={collapsed}
         />
-      )}
-    </div>
+      </Sider>
+      
+      <Layout style={{ marginLeft: collapsed ? 80 : 200, transition: 'margin-left 0.2s' }}>
+        <Header 
+          collapsed={collapsed} 
+          setCollapsed={setCollapsed}
+        />
+        
+        <Content
+          style={{
+            padding: 24,
+            margin: 0,
+            minHeight: 280,
+            background: '#f5f5f5',
+          }}
+        >
+          {renderCurrentPage()}
+        </Content>
+      </Layout>
+    </Layout>
   );
 };
 
@@ -137,35 +163,30 @@ const AppContent = () => {
 // 主應用程式組件
 const App = () => {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="App">
-          <AppContent />
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: '#363636',
-                color: '#fff',
-              },
-              success: {
-                duration: 3000,
-                theme: {
-                  primary: '#4aed88',
-                },
-              },
-              error: {
-                duration: 4000,
-                theme: {
-                  primary: '#ff6b6b',
-                },
-              },
-            }}
-          />
-        </div>
-      </Router>
-    </AuthProvider>
+    <ConfigProvider 
+      locale={zhCN}
+      theme={{
+        token: {
+          colorPrimary: '#3b82f6',
+          borderRadius: 8,
+          colorBgLayout: '#f5f5f5',
+        },
+        components: {
+          Layout: {
+            siderBg: '#ffffff',
+            bodyBg: '#f5f5f5',
+          },
+        },
+      }}
+    >
+      <AntApp>
+        <AuthProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </AuthProvider>
+      </AntApp>
+    </ConfigProvider>
   );
 };
 

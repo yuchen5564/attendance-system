@@ -10,8 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.0.0",
     "@tailwindcss/forms": "^0.5.10",
+    "antd": "^5.25.4",
     "autoprefixer": "^10.4.21",
+    "dayjs": "^1.11.13",
     "firebase": "^11.9.0",
     "lucide-react": "^0.513.0",
     "postcss": "^8.5.4",

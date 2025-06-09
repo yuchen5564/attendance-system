@@ -1,45 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Calendar, Check, X, Eye } from 'lucide-react';
+import { 
+  Button, 
+  Card, 
+  Space, 
+  Typography, 
+  Tag, 
+  List, 
+  Modal, 
+  Input,
+  Popconfirm,
+  Empty,
+  Segmented,
+  App
+} from 'antd';
+import { 
+  PlusOutlined, 
+  CalendarOutlined, 
+  CheckOutlined, 
+  CloseOutlined, 
+  EyeOutlined,
+  ExclamationCircleOutlined
+} from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../firebase/firestoreService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import LeaveRequestModal from '../components/LeaveRequestModal';
-import Pagination from '../components/Pagination';
-import { usePagination } from '../hooks/usePagination';
-import toast from 'react-hot-toast';
+import dayjs from 'dayjs';
+
+const { Title, Text, Paragraph } = Typography;
+const { TextArea } = Input;
 
 const LeaveRequestsPage = () => {
   const { userData, isAdmin, isManager } = useAuth();
+  const { message, modal } = App.useApp();
   const [loading, setLoading] = useState(true);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
   const [users, setUsers] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState(null);
   const [filter, setFilter] = useState('all');
 
-  // 使用分頁 Hook
-  const {
-    currentPage,
-    itemsPerPage,
-    totalPages,
-    totalItems,
-    paginatedData,
-    setCurrentPage,
-    setItemsPerPage,
-    resetToFirstPage
-  } = usePagination(filteredRequests, 15); // 預設每頁 15 筆
+  const filterOptions = [
+    { label: '全部', value: 'all' },
+    { label: '待審核', value: 'pending' },
+    { label: '已批准', value: 'approved' },
+    { label: '已拒絕', value: 'rejected' },
+  ];
 
   useEffect(() => {
     loadData();
   }, [userData]);
 
-  // 當篩選條件改變時，更新篩選結果並重置頁碼
   useEffect(() => {
-    const filtered = getFilteredRequests();
+    const filtered = filter === 'all' 
+      ? leaveRequests 
+      : leaveRequests.filter(request => request.status === filter);
     setFilteredRequests(filtered);
-    resetToFirstPage();
-  }, [leaveRequests, filter, resetToFirstPage]);
+  }, [leaveRequests, filter]);
 
   const loadData = async () => {
     if (!userData) return;
@@ -63,7 +80,7 @@ const LeaveRequestsPage = () => {
       }
     } catch (error) {
       console.error('載入請假申請失敗:', error);
-      toast.error('載入數據失敗');
+      message.error('載入數據失敗');
     } finally {
       setLoading(false);
     }
@@ -72,23 +89,43 @@ const LeaveRequestsPage = () => {
   const handleApprove = async (requestId) => {
     try {
       await firestoreService.approveLeaveRequest(requestId, userData.uid);
-      toast.success('請假申請已批准');
+      message.success('請假申請已批准');
       loadData();
     } catch (error) {
       console.error('批准請假申請失敗:', error);
-      toast.error('操作失敗');
+      message.error('操作失敗');
     }
   };
 
-  const handleReject = async (requestId, comments = '') => {
-    try {
-      await firestoreService.rejectLeaveRequest(requestId, userData.uid, comments);
-      toast.success('請假申請已拒絕');
-      loadData();
-    } catch (error) {
-      console.error('拒絕請假申請失敗:', error);
-      toast.error('操作失敗');
-    }
+  const handleReject = (requestId) => {
+    modal.confirm({
+      title: '拒絕請假申請',
+      icon: <ExclamationCircleOutlined />,
+      content: (
+        <div>
+          <p style={{ marginBottom: '16px' }}>請輸入拒絕原因：</p>
+          <TextArea
+            id="reject-reason"
+            rows={3}
+            placeholder="請輸入拒絕原因（可選）"
+            maxLength={200}
+          />
+        </div>
+      ),
+      okText: '確認拒絕',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          const reason = document.getElementById('reject-reason')?.value || '';
+          await firestoreService.rejectLeaveRequest(requestId, userData.uid, reason);
+          message.success('請假申請已拒絕');
+          loadData();
+        } catch (error) {
+          console.error('拒絕請假申請失敗:', error);
+          message.error('操作失敗');
+        }
+      },
+    });
   };
 
   const handleSubmitRequest = async (requestData) => {
@@ -99,12 +136,12 @@ const LeaveRequestsPage = () => {
         userName: userData.name,
         userDepartment: userData.department
       });
-      toast.success('請假申請已提交');
+      message.success('請假申請已提交');
       setShowModal(false);
       loadData();
     } catch (error) {
       console.error('提交請假申請失敗:', error);
-      toast.error('提交失敗');
+      message.error('提交失敗');
     }
   };
 
@@ -116,148 +153,199 @@ const LeaveRequestsPage = () => {
   const formatDate = (timestamp) => {
     if (!timestamp) return '';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString('zh-TW');
+    return dayjs(date).format('YYYY-MM-DD');
   };
 
-  const getStatusText = (status) => {
+  const getStatusConfig = (status) => {
     switch (status) {
-      case 'pending': return '待審核';
-      case 'approved': return '已批准';
-      case 'rejected': return '已拒絕';
-      default: return status;
+      case 'pending':
+        return { color: 'orange', text: '待審核' };
+      case 'approved':
+        return { color: 'green', text: '已批准' };
+      case 'rejected':
+        return { color: 'red', text: '已拒絕' };
+      default:
+        return { color: 'default', text: status };
     }
   };
 
-  const getFilteredRequests = () => {
-    if (filter === 'all') return leaveRequests;
-    return leaveRequests.filter(request => request.status === filter);
+  const getLeaveTypeText = (type) => {
+    const types = {
+      annual: '年假',
+      sick: '病假',
+      personal: '事假',
+      maternity: '產假',
+      paternity: '陪產假',
+      funeral: '喪假',
+      marriage: '婚假',
+      other: '其他'
+    };
+    return types[type] || type;
   };
 
   if (loading) {
     return <LoadingSpinner text="載入請假申請中..." />;
   }
 
+  const getFilterCount = (filterValue) => {
+    if (filterValue === 'all') return leaveRequests.length;
+    return leaveRequests.filter(r => r.status === filterValue).length;
+  };
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1>請假管理</h1>
-        <button
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <Title level={2} style={{ margin: 0 }}>請假管理</Title>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
           onClick={() => setShowModal(true)}
-          className="btn btn-primary"
         >
-          <Plus size={20} />
           新增請假申請
-        </button>
+        </Button>
       </div>
 
       {/* 篩選標籤 */}
-      <div className="flex gap-2 mb-6">
-        {[
-          { key: 'all', label: '全部', count: leaveRequests.length },
-          { key: 'pending', label: '待審核', count: leaveRequests.filter(r => r.status === 'pending').length },
-          { key: 'approved', label: '已批准', count: leaveRequests.filter(r => r.status === 'approved').length },
-          { key: 'rejected', label: '已拒絕', count: leaveRequests.filter(r => r.status === 'rejected').length }
-        ].map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setFilter(tab.key)}
-            className={`btn ${filter === tab.key ? 'btn-primary' : 'btn-outline'}`}
-          >
-            {tab.label} ({tab.count})
-          </button>
-        ))}
-      </div>
+      <Card style={{ marginBottom: '24px' }}>
+        <Segmented
+          value={filter}
+          onChange={setFilter}
+          options={filterOptions.map(option => ({
+            ...option,
+            label: `${option.label} (${getFilterCount(option.value)})`
+          }))}
+          style={{ width: '100%' }}
+        />
+      </Card>
 
       {/* 請假申請列表 */}
-      <div className="card">
-        <div className="card-header">
-          <h3>請假申請 ({totalItems} 筆)</h3>
-        </div>
-        <div className="card-body">
-          {filteredRequests.length === 0 ? (
-            <div className="text-center py-8">
-              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">沒有找到符合條件的請假申請</p>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-4">
-                {paginatedData.map((request) => (
-                  <div key={request.id} className={`leave-request-card card ${request.status}`}>
-                    <div className="card-body">
-                      <div className="leave-request-header">
-                        <div>
+      <Card 
+        title={
+          <Space>
+            <CalendarOutlined />
+            請假申請 ({filteredRequests.length} 筆)
+          </Space>
+        }
+      >
+        {filteredRequests.length === 0 ? (
+          <Empty 
+            image={<CalendarOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />}
+            description="沒有找到符合條件的請假申請"
+          />
+        ) : (
+          <List
+            itemLayout="vertical"
+            size="large"
+            pagination={{
+              pageSize: 8,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) =>
+                `第 ${range[0]}-${range[1]} 條，共 ${total} 條記錄`,
+            }}
+            dataSource={filteredRequests}
+            renderItem={(request) => {
+              const statusConfig = getStatusConfig(request.status);
+              return (
+                <List.Item
+                  key={request.id}
+                  style={{
+                    borderLeft: `4px solid ${
+                      request.status === 'pending' ? '#faad14' :
+                      request.status === 'approved' ? '#52c41a' : '#ff4d4f'
+                    }`,
+                    backgroundColor: '#fafafa',
+                    marginBottom: '16px',
+                    borderRadius: '8px',
+                    padding: '16px',
+                  }}
+                  actions={[
+                    ...(isAdmin || isManager) && request.status === 'pending' ? [
+                      <Popconfirm
+                        key="approve"
+                        title="確定批准此請假申請嗎？"
+                        onConfirm={() => handleApprove(request.id)}
+                        okText="確定"
+                        cancelText="取消"
+                      >
+                        <Button 
+                          type="primary" 
+                          size="small"
+                          icon={<CheckOutlined />}
+                        >
+                          批准
+                        </Button>
+                      </Popconfirm>,
+                      <Button
+                        key="reject"
+                        danger
+                        size="small"
+                        icon={<CloseOutlined />}
+                        onClick={() => handleReject(request.id)}
+                      >
+                        拒絕
+                      </Button>
+                    ] : []
+                  ]}
+                >
+                  <List.Item.Meta
+                    title={
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Space>
                           {(isAdmin || isManager) && (
-                            <div className="leave-request-user">{getUserName(request.userId)}</div>
+                            <Text strong>{getUserName(request.userId)}</Text>
                           )}
-                          <div className="leave-request-dates">
-                            {formatDate(request.startDate)} - {formatDate(request.endDate)}
-                            <span className="ml-2 text-sm">({request.days} 天)</span>
-                          </div>
-                        </div>
-                        <span className={`status-badge ${request.status}`}>
-                          {getStatusText(request.status)}
-                        </span>
+                          <Tag color="blue">{getLeaveTypeText(request.type)}</Tag>
+                        </Space>
+                        <Tag color={statusConfig.color}>{statusConfig.text}</Tag>
                       </div>
-
-                      <div className="mb-4">
-                        <div className="text-sm text-gray-600 mb-1">請假類型：{request.type}</div>
-                        <div className="leave-request-reason">{request.reason}</div>
-                      </div>
-
-                      {request.comments && (
-                        <div className="mb-4 p-3 bg-gray-50 rounded">
-                          <div className="text-sm font-medium text-gray-700 mb-1">審核意見：</div>
-                          <div className="text-sm text-gray-600">{request.comments}</div>
+                    }
+                    description={
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Text>
+                          <CalendarOutlined style={{ marginRight: '8px' }} />
+                          {formatDate(request.startDate)} ~ {formatDate(request.endDate)}
+                          <Text type="secondary" style={{ marginLeft: '8px' }}>
+                            ({request.days} 天)
+                          </Text>
+                        </Text>
+                        
+                        <div>
+                          <Text strong>請假原因：</Text>
+                          <Paragraph 
+                            ellipsis={{ rows: 2, expandable: true, symbol: '展開' }}
+                            style={{ marginBottom: 0 }}
+                          >
+                            {request.reason}
+                          </Paragraph>
                         </div>
-                      )}
 
-                      <div className="flex justify-between items-center">
-                        <div className="text-sm text-gray-500">
-                          申請時間：{formatDate(request.createdAt)}
-                        </div>
-
-                        {(isAdmin || isManager) && request.status === 'pending' && (
-                          <div className="leave-request-actions">
-                            <button
-                              onClick={() => handleApprove(request.id)}
-                              className="btn btn-success btn-sm"
-                            >
-                              <Check size={16} />
-                              批准
-                            </button>
-                            <button
-                              onClick={() => {
-                                const comments = prompt('請輸入拒絕原因（可選）：');
-                                if (comments !== null) {
-                                  handleReject(request.id, comments);
-                                }
-                              }}
-                              className="btn btn-danger btn-sm"
-                            >
-                              <X size={16} />
-                              拒絕
-                            </button>
+                        {request.comments && (
+                          <div style={{ 
+                            padding: '12px', 
+                            backgroundColor: '#f0f0f0', 
+                            borderRadius: '6px',
+                            marginTop: '8px'
+                          }}>
+                            <Text strong style={{ color: '#1890ff' }}>審核意見：</Text>
+                            <div style={{ marginTop: '4px' }}>
+                              <Text>{request.comments}</Text>
+                            </div>
                           </div>
                         )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
 
-              {/* 分頁組件 */}
-              <Pagination
-                currentPage={currentPage}
-                totalItems={totalItems}
-                itemsPerPage={itemsPerPage}
-                onPageChange={setCurrentPage}
-                onItemsPerPageChange={setItemsPerPage}
-              />
-            </>
-          )}
-        </div>
-      </div>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                          申請時間：{formatDate(request.createdAt)}
+                        </Text>
+                      </Space>
+                    }
+                  />
+                </List.Item>
+              );
+            }}
+          />
+        )}
+      </Card>
 
       {/* 請假申請彈窗 */}
       {showModal && (

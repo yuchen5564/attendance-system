@@ -1,23 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, Download, Calendar, Users, TrendingUp, Clock } from 'lucide-react';
+import { 
+  Card, 
+  Button, 
+  DatePicker, 
+  Row, 
+  Col, 
+  Statistic, 
+  Table, 
+  Typography, 
+  Space,
+  Empty,
+  Progress,
+  App
+} from 'antd';
+import { 
+  BarChartOutlined, 
+  DownloadOutlined, 
+  CalendarOutlined, 
+  TeamOutlined, 
+  ArrowUpOutlined, 
+  ClockCircleOutlined 
+} from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../firebase/firestoreService';
 import LoadingSpinner from '../components/LoadingSpinner';
-import toast from 'react-hot-toast';
+import dayjs from 'dayjs';
+import isBetween from 'dayjs/plugin/isBetween';
+
+// 初始化 dayjs 插件
+dayjs.extend(isBetween);
+
+const { Title } = Typography;
+const { RangePicker } = DatePicker;
 
 const ReportsPage = () => {
   const { userData, isAdmin, isManager } = useAuth();
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState({
-    attendanceStats: {},
-    departmentStats: {},
-    leaveStats: {},
+    attendanceStats: {
+      totalRecords: 0,
+      totalUsers: 0,
+      clockInCount: 0,
+      clockOutCount: 0,
+      activeUsers: 0,
+      averageDaily: 0
+    },
+    departmentStats: [],
+    leaveStats: {
+      total: 0,
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+      typeBreakdown: {}
+    },
     monthlyTrends: []
   });
-  const [dateRange, setDateRange] = useState({
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0]
-  });
+  const [dateRange, setDateRange] = useState([
+    dayjs().startOf('month'),
+    dayjs().endOf('day')
+  ]);
 
   useEffect(() => {
     if (isAdmin || isManager) {
@@ -28,38 +70,30 @@ const ReportsPage = () => {
   const loadReportData = async () => {
     try {
       setLoading(true);
-      const startDate = new Date(dateRange.startDate);
-      const endDate = new Date(dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
+      const [startDate, endDate] = dateRange;
 
       // 載入所有相關數據
       const [users, allAttendance, allLeaves] = await Promise.all([
         firestoreService.getAllUsers(),
-        firestoreService.getAttendanceRecords(), // 獲取所有出勤記錄
+        firestoreService.getAttendanceRecords(),
         firestoreService.getLeaveRequests()
       ]);
 
       // 篩選日期範圍內的數據
       const filteredAttendance = allAttendance.filter(record => {
-        const recordDate = record.timestamp.toDate ? record.timestamp.toDate() : new Date(record.timestamp);
-        return recordDate >= startDate && recordDate <= endDate;
+        const recordDate = dayjs(record.timestamp.toDate ? record.timestamp.toDate() : new Date(record.timestamp));
+        return recordDate.isBetween(startDate, endDate, 'day', '[]');
       });
 
       const filteredLeaves = allLeaves.filter(leave => {
-        const leaveDate = leave.createdAt.toDate ? leave.createdAt.toDate() : new Date(leave.createdAt);
-        return leaveDate >= startDate && leaveDate <= endDate;
+        const leaveDate = dayjs(leave.createdAt.toDate ? leave.createdAt.toDate() : new Date(leave.createdAt));
+        return leaveDate.isBetween(startDate, endDate, 'day', '[]');
       });
 
-      // 計算出勤統計
+      // 計算統計數據
       const attendanceStats = calculateAttendanceStats(filteredAttendance, users);
-      
-      // 計算部門統計
       const departmentStats = calculateDepartmentStats(filteredAttendance, users);
-      
-      // 計算請假統計
       const leaveStats = calculateLeaveStats(filteredLeaves);
-      
-      // 計算月度趨勢
       const monthlyTrends = calculateMonthlyTrends(filteredAttendance);
 
       setReportData({
@@ -70,7 +104,28 @@ const ReportsPage = () => {
       });
     } catch (error) {
       console.error('載入報表數據失敗:', error);
-      toast.error('載入報表數據失敗');
+      message.error('載入報表數據失敗');
+      
+      // 設置預設空值，避免頁面崩潰
+      setReportData({
+        attendanceStats: {
+          totalRecords: 0,
+          totalUsers: 0,
+          clockInCount: 0,
+          clockOutCount: 0,
+          activeUsers: 0,
+          averageDaily: 0
+        },
+        departmentStats: [],
+        leaveStats: {
+          total: 0,
+          pending: 0,
+          approved: 0,
+          rejected: 0,
+          typeBreakdown: {}
+        },
+        monthlyTrends: []
+      });
     } finally {
       setLoading(false);
     }
@@ -87,7 +142,7 @@ const ReportsPage = () => {
     };
 
     // 計算平均每日出勤
-    const days = Math.ceil((new Date(dateRange.endDate) - new Date(dateRange.startDate)) / (1000 * 60 * 60 * 24)) + 1;
+    const days = dateRange[1].diff(dateRange[0], 'day') + 1;
     stats.averageDaily = Math.round(stats.totalRecords / days);
 
     return stats;
@@ -114,11 +169,13 @@ const ReportsPage = () => {
     });
 
     return Object.entries(deptMap).map(([dept, data]) => ({
+      key: dept,
       department: dept,
       totalRecords: data.total,
       totalUsers: data.users,
       activeUsers: data.userSet.size,
-      averagePerUser: data.userSet.size > 0 ? Math.round(data.total / data.userSet.size) : 0
+      averagePerUser: data.userSet.size > 0 ? Math.round(data.total / data.userSet.size) : 0,
+      activityRate: data.users > 0 ? Math.round((data.userSet.size / data.users) * 100) : 0
     }));
   };
 
@@ -144,8 +201,8 @@ const ReportsPage = () => {
     const monthlyData = {};
     
     attendance.forEach(record => {
-      const date = record.timestamp.toDate ? record.timestamp.toDate() : new Date(record.timestamp);
-      const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const date = dayjs(record.timestamp.toDate ? record.timestamp.toDate() : new Date(record.timestamp));
+      const month = date.format('YYYY-MM');
       
       if (!monthlyData[month]) {
         monthlyData[month] = { clockIn: 0, clockOut: 0 };
@@ -160,8 +217,10 @@ const ReportsPage = () => {
 
     return Object.entries(monthlyData)
       .map(([month, data]) => ({
+        key: month,
         month,
-        ...data,
+        clockIn: data.clockIn,
+        clockOut: data.clockOut,
         total: data.clockIn + data.clockOut
       }))
       .sort((a, b) => a.month.localeCompare(b.month));
@@ -170,7 +229,7 @@ const ReportsPage = () => {
   const exportReport = () => {
     const reportContent = [
       ['出勤報表', '', '', ''],
-      ['統計期間', `${dateRange.startDate} 至 ${dateRange.endDate}`, '', ''],
+      ['統計期間', `${dateRange[0].format('YYYY-MM-DD')} 至 ${dateRange[1].format('YYYY-MM-DD')}`, '', ''],
       ['', '', '', ''],
       ['出勤統計', '', '', ''],
       ['總記錄數', reportData.attendanceStats.totalRecords, '', ''],
@@ -203,22 +262,99 @@ const ReportsPage = () => {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `出勤報表_${new Date().toLocaleDateString('zh-TW')}.csv`);
+    link.setAttribute('download', `出勤報表_${dayjs().format('YYYY-MM-DD')}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    toast.success('報表已匯出');
+    message.success('報表已匯出');
   };
+
+  const departmentColumns = [
+    {
+      title: '部門',
+      dataIndex: 'department',
+      key: 'department',
+      render: (text) => <span style={{ fontWeight: 500 }}>{text}</span>,
+    },
+    {
+      title: '總記錄',
+      dataIndex: 'totalRecords',
+      key: 'totalRecords',
+      sorter: (a, b) => a.totalRecords - b.totalRecords,
+    },
+    {
+      title: '活躍用戶',
+      dataIndex: 'activeUsers',
+      key: 'activeUsers',
+      render: (activeUsers, record) => (
+        <span>{activeUsers}/{record.totalUsers}</span>
+      ),
+      sorter: (a, b) => a.activeUsers - b.activeUsers,
+    },
+    {
+      title: '活躍率',
+      dataIndex: 'activityRate',
+      key: 'activityRate',
+      render: (rate) => (
+        <Progress 
+          percent={rate} 
+          size="small" 
+          status={rate > 80 ? 'success' : rate > 60 ? 'normal' : 'exception'}
+        />
+      ),
+      sorter: (a, b) => a.activityRate - b.activityRate,
+    },
+    {
+      title: '平均/人',
+      dataIndex: 'averagePerUser',
+      key: 'averagePerUser',
+      sorter: (a, b) => a.averagePerUser - b.averagePerUser,
+    },
+  ];
+
+  const monthlyColumns = [
+    {
+      title: '月份',
+      dataIndex: 'month',
+      key: 'month',
+      render: (text) => <span style={{ fontWeight: 500 }}>{text}</span>,
+    },
+    {
+      title: '上班打卡',
+      dataIndex: 'clockIn',
+      key: 'clockIn',
+      sorter: (a, b) => a.clockIn - b.clockIn,
+    },
+    {
+      title: '下班打卡',
+      dataIndex: 'clockOut',
+      key: 'clockOut',
+      sorter: (a, b) => a.clockOut - b.clockOut,
+    },
+    {
+      title: '總計',
+      dataIndex: 'total',
+      key: 'total',
+      render: (text) => <span style={{ fontWeight: 600 }}>{text}</span>,
+      sorter: (a, b) => a.total - b.total,
+    },
+  ];
 
   if (!isAdmin && !isManager) {
     return (
-      <div className="text-center py-8">
-        <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-gray-600 mb-2">權限不足</h2>
-        <p className="text-gray-500">您沒有權限訪問報表分析功能</p>
-      </div>
+      <Card>
+        <Empty
+          image={<BarChartOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />}
+          description={
+            <div>
+              <Title level={4}>權限不足</Title>
+              <p>您沒有權限訪問報表分析功能</p>
+            </div>
+          }
+        />
+      </Card>
     );
   }
 
@@ -226,196 +362,195 @@ const ReportsPage = () => {
     return <LoadingSpinner text="載入報表數據中..." />;
   }
 
+  const getLeaveTypeText = (type) => {
+    const types = {
+      annual: '年假',
+      sick: '病假',
+      personal: '事假',
+      maternity: '產假',
+      paternity: '陪產假',
+      funeral: '喪假',
+      marriage: '婚假',
+      other: '其他'
+    };
+    return types[type] || type;
+  };
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1>報表分析</h1>
-        <button
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <Title level={2} style={{ margin: 0 }}>報表分析</Title>
+        <Button
+          type="primary"
+          icon={<DownloadOutlined />}
           onClick={exportReport}
-          className="btn btn-primary"
         >
-          <Download size={20} />
           匯出報表
-        </button>
+        </Button>
       </div>
 
       {/* 日期範圍選擇 */}
-      <div className="card mb-6">
-        <div className="card-header">
-          <div className="flex items-center gap-2">
-            <Calendar size={20} />
-            <h3>統計期間</h3>
-          </div>
-        </div>
-        <div className="card-body">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="form-group">
-              <label className="form-label">開始日期</label>
-              <input
-                type="date"
-                value={dateRange.startDate}
-                onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                className="form-input"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">結束日期</label>
-              <input
-                type="date"
-                value={dateRange.endDate}
-                onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                className="form-input"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      <Card 
+        title={
+          <Space>
+            <CalendarOutlined />
+            統計期間
+          </Space>
+        }
+        style={{ marginBottom: '24px' }}
+      >
+        <RangePicker
+          value={dateRange}
+          onChange={setDateRange}
+          style={{ width: '300px' }}
+          placeholder={['開始日期', '結束日期']}
+        />
+      </Card>
 
       {/* 統計卡片 */}
-      <div className="stats-grid mb-6">
-        <div className="stat-card">
-          <div className="stat-label">總出勤記錄</div>
-          <div className="stat-value">{reportData.attendanceStats.totalRecords}</div>
-          <div className="flex items-center gap-1 mt-2">
-            <Clock size={16} className="text-blue-600" />
-            <span className="text-sm text-gray-600">次</span>
-          </div>
-        </div>
+      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="總出勤記錄"
+              value={reportData.attendanceStats?.totalRecords || 0}
+              prefix={<ClockCircleOutlined style={{ color: '#1890ff' }} />}
+              suffix="次"
+            />
+          </Card>
+        </Col>
+        
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="活躍員工"
+              value={reportData.attendanceStats?.activeUsers || 0}
+              prefix={<TeamOutlined style={{ color: '#52c41a' }} />}
+              suffix={`/ ${reportData.attendanceStats?.totalUsers || 0} 人`}
+            />
+          </Card>
+        </Col>
+        
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="待審核請假"
+              value={reportData.leaveStats?.pending || 0}
+              prefix={<CalendarOutlined style={{ color: '#faad14' }} />}
+              suffix="件"
+            />
+          </Card>
+        </Col>
+        
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="平均每日出勤"
+              value={reportData.attendanceStats?.averageDaily || 0}
+              prefix={<ArrowUpOutlined style={{ color: '#1890ff' }} />}
+              suffix="次"
+            />
+          </Card>
+        </Col>
+      </Row>
 
-        <div className="stat-card success">
-          <div className="stat-label">活躍員工</div>
-          <div className="stat-value">{reportData.attendanceStats.activeUsers}</div>
-          <div className="flex items-center gap-1 mt-2">
-            <Users size={16} className="text-green-600" />
-            <span className="text-sm text-gray-600">
-              / {reportData.attendanceStats.totalUsers} 人
-            </span>
-          </div>
-        </div>
-
-        <div className="stat-card warning">
-          <div className="stat-label">待審核請假</div>
-          <div className="stat-value">{reportData.leaveStats.pending}</div>
-          <div className="flex items-center gap-1 mt-2">
-            <Calendar size={16} className="text-yellow-600" />
-            <span className="text-sm text-gray-600">件</span>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-label">平均每日出勤</div>
-          <div className="stat-value">{reportData.attendanceStats.averageDaily}</div>
-          <div className="flex items-center gap-1 mt-2">
-            <TrendingUp size={16} className="text-blue-600" />
-            <span className="text-sm text-gray-600">次</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-6">
+      <Row gutter={[16, 16]}>
         {/* 部門統計 */}
-        <div className="card">
-          <div className="card-header">
-            <h3>部門出勤統計</h3>
-          </div>
-          <div className="card-body">
-            <div className="table-container">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>部門</th>
-                    <th>總記錄</th>
-                    <th>活躍用戶</th>
-                    <th>平均/人</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.departmentStats.map((dept, index) => (
-                    <tr key={index}>
-                      <td className="font-medium">{dept.department}</td>
-                      <td>{dept.totalRecords}</td>
-                      <td>{dept.activeUsers}/{dept.totalUsers}</td>
-                      <td>{dept.averagePerUser}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <Col xs={24} lg={14}>
+          <Card 
+            title={
+              <Space>
+                <TeamOutlined />
+                部門出勤統計
+              </Space>
+            }
+          >
+            <Table
+              columns={departmentColumns}
+              dataSource={reportData.departmentStats}
+              pagination={false}
+              size="small"
+            />
+          </Card>
+        </Col>
 
         {/* 請假統計 */}
-        <div className="card">
-          <div className="card-header">
-            <h3>請假統計</h3>
-          </div>
-          <div className="card-body">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span>總申請數</span>
-                <span className="font-semibold">{reportData.leaveStats.total}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>待審核</span>
-                <span className="status-badge pending">{reportData.leaveStats.pending}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>已批准</span>
-                <span className="status-badge approved">{reportData.leaveStats.approved}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>已拒絕</span>
-                <span className="status-badge rejected">{reportData.leaveStats.rejected}</span>
-              </div>
+        <Col xs={24} lg={10}>
+          <Card 
+            title={
+              <Space>
+                <CalendarOutlined />
+                請假統計
+              </Space>
+            }
+          >
+            <Space direction="vertical" style={{ width: '100%' }} size="large">
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Statistic title="總申請數" value={reportData.leaveStats?.total || 0} />
+                </Col>
+                <Col span={12}>
+                  <Statistic 
+                    title="待審核" 
+                    value={reportData.leaveStats?.pending || 0}
+                    valueStyle={{ color: '#faad14' }}
+                  />
+                </Col>
+              </Row>
               
-              {Object.keys(reportData.leaveStats.typeBreakdown).length > 0 && (
-                <>
-                  <hr className="my-4" />
-                  <h4 className="font-medium mb-2">請假類型分佈</h4>
-                  {Object.entries(reportData.leaveStats.typeBreakdown).map(([type, count]) => (
-                    <div key={type} className="flex justify-between items-center">
-                      <span>{type}</span>
-                      <span>{count}</span>
-                    </div>
-                  ))}
-                </>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Statistic 
+                    title="已批准" 
+                    value={reportData.leaveStats?.approved || 0}
+                    valueStyle={{ color: '#52c41a' }}
+                  />
+                </Col>
+                <Col span={12}>
+                  <Statistic 
+                    title="已拒絕" 
+                    value={reportData.leaveStats?.rejected || 0}
+                    valueStyle={{ color: '#ff4d4f' }}
+                  />
+                </Col>
+              </Row>
+
+              {Object.keys(reportData.leaveStats.typeBreakdown || {}).length > 0 && (
+                <div>
+                  <Title level={5}>請假類型分佈</Title>
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    {Object.entries(reportData.leaveStats.typeBreakdown || {}).map(([type, count]) => (
+                      <div key={type} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>{getLeaveTypeText(type)}</span>
+                        <span style={{ fontWeight: 500 }}>{count}</span>
+                      </div>
+                    ))}
+                  </Space>
+                </div>
               )}
-            </div>
-          </div>
-        </div>
-      </div>
+            </Space>
+          </Card>
+        </Col>
+      </Row>
 
       {/* 月度趨勢 */}
       {reportData.monthlyTrends.length > 0 && (
-        <div className="card mt-6">
-          <div className="card-header">
-            <h3>月度出勤趨勢</h3>
-          </div>
-          <div className="card-body">
-            <div className="table-container">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>月份</th>
-                    <th>上班打卡</th>
-                    <th>下班打卡</th>
-                    <th>總計</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.monthlyTrends.map((trend, index) => (
-                    <tr key={index}>
-                      <td className="font-medium">{trend.month}</td>
-                      <td>{trend.clockIn}</td>
-                      <td>{trend.clockOut}</td>
-                      <td className="font-semibold">{trend.total}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <Card 
+          title={
+            <Space>
+              <ArrowUpOutlined />
+              月度出勤趨勢
+            </Space>
+          }
+          style={{ marginTop: '16px' }}
+        >
+          <Table
+            columns={monthlyColumns}
+            dataSource={reportData.monthlyTrends}
+            pagination={false}
+            size="small"
+          />
+        </Card>
       )}
     </div>
   );

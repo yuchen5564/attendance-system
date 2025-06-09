@@ -1,19 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Clock } from 'lucide-react';
+import { Card, Button, Typography, Space, Badge, Statistic, App } from 'antd';
+import { 
+  ClockCircleOutlined,
+  LoginOutlined,
+  LogoutOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../firebase/firestoreService';
-import toast from 'react-hot-toast';
+import dayjs from 'dayjs';
+
+const { Title, Text } = Typography;
 
 const ClockWidget = ({ onClockAction }) => {
   const { userData } = useAuth();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const { message } = App.useApp();
+  const [currentTime, setCurrentTime] = useState(dayjs());
   const [loading, setLoading] = useState(false);
   const [todayRecords, setTodayRecords] = useState([]);
 
   useEffect(() => {
     // 更新時間
     const timer = setInterval(() => {
-      setCurrentTime(new Date());
+      setCurrentTime(dayjs());
     }, 1000);
 
     return () => clearInterval(timer);
@@ -34,14 +42,12 @@ const ClockWidget = ({ onClockAction }) => {
     try {
       console.log('🔄 ClockWidget: 載入今日打卡記錄...');
       
-      // 使用完全簡化的查詢，避免任何索引需求
       const records = await firestoreService.getTodayAttendance(userData.uid);
       console.log('✅ ClockWidget: 今日記錄數量:', records?.length || 0);
       
       setTodayRecords(records || []);
     } catch (error) {
       console.error('❌ ClockWidget: 載入今日打卡記錄失敗:', error);
-      // 設定為空陣列，避免影響打卡功能
       setTodayRecords([]);
     }
   };
@@ -50,12 +56,12 @@ const ClockWidget = ({ onClockAction }) => {
     setLoading(true);
     try {
       await firestoreService.clockIn(userData.uid);
-      toast.success('上班打卡成功！');
+      message.success('上班打卡成功！');
       await loadTodayRecords();
       if (onClockAction) onClockAction();
     } catch (error) {
       console.error('打卡失敗:', error);
-      toast.error('打卡失敗，請稍後再試');
+      message.error('打卡失敗，請稍後再試');
     } finally {
       setLoading(false);
     }
@@ -65,12 +71,12 @@ const ClockWidget = ({ onClockAction }) => {
     setLoading(true);
     try {
       await firestoreService.clockOut(userData.uid);
-      toast.success('下班打卡成功！');
+      message.success('下班打卡成功！');
       await loadTodayRecords();
       if (onClockAction) onClockAction();
     } catch (error) {
       console.error('打卡失敗:', error);
-      toast.error('打卡失敗，請稍後再試');
+      message.error('打卡失敗，請稍後再試');
     } finally {
       setLoading(false);
     }
@@ -91,89 +97,123 @@ const ClockWidget = ({ onClockAction }) => {
     return lastAction && lastAction.type === 'clock_in';
   };
 
-  const formatTime = (date) => {
-    return date.toLocaleTimeString('zh-TW', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  };
-
-  const formatDate = (date) => {
-    return date.toLocaleDateString('zh-TW', { 
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'long'
-    });
-  };
-
-  const getStatusText = () => {
+  const getStatusInfo = () => {
     const lastAction = getLastClockAction();
-    if (!lastAction) return '尚未打卡';
-    return lastAction.type === 'clock_in' ? '已上班' : '已下班';
+    if (!lastAction) {
+      return { text: '尚未打卡', status: 'default' };
+    }
+    
+    if (lastAction.type === 'clock_in') {
+      return { text: '已上班', status: 'processing' };
+    } else {
+      return { text: '已下班', status: 'success' };
+    }
   };
 
-  const getStatusColor = () => {
-    const lastAction = getLastClockAction();
-    if (!lastAction) return 'gray';
-    return lastAction.type === 'clock_in' ? 'green' : 'red';
-  };
+  const statusInfo = getStatusInfo();
 
   return (
-    <div className="clock-widget">
-      <div className="clock-time">
-        {formatTime(currentTime)}
-      </div>
-      <div className="clock-date">
-        {formatDate(currentTime)}
-      </div>
-
-      <div className="clock-status">
-        <div 
-          className={`clock-status-indicator ${getLastClockAction()?.type === 'clock_out' ? 'out' : ''}`}
-          style={{ backgroundColor: getStatusColor() === 'green' ? '#10b981' : getStatusColor() === 'red' ? '#ef4444' : '#6b7280' }}
-        />
-        <span>{getStatusText()}</span>
-      </div>
-
-      <div className="clock-buttons">
-        <button
-          onClick={handleClockIn}
-          disabled={!canClockIn() || loading}
-          className="clock-btn"
+    <Card
+      style={{
+        background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+        border: 'none',
+        borderRadius: '16px',
+        color: 'white',
+        marginBottom: '24px',
+      }}
+      bodyStyle={{ padding: '32px' }}
+    >
+      <div style={{ textAlign: 'center' }}>
+        <Title 
+          level={1} 
           style={{ 
-            opacity: !canClockIn() ? 0.5 : 1,
-            cursor: !canClockIn() ? 'not-allowed' : 'pointer'
+            color: 'white', 
+            fontSize: '48px', 
+            fontWeight: '700',
+            marginBottom: '8px',
+            fontFamily: 'monospace',
           }}
         >
-          {loading ? '處理中...' : '上班打卡'}
-        </button>
+          {currentTime.format('HH:mm:ss')}
+        </Title>
         
-        <button
-          onClick={handleClockOut}
-          disabled={!canClockOut() || loading}
-          className="clock-btn"
+        <Text 
           style={{ 
-            opacity: !canClockOut() ? 0.5 : 1,
-            cursor: !canClockOut() ? 'not-allowed' : 'pointer'
+            color: 'rgba(255, 255, 255, 0.9)', 
+            fontSize: '18px',
+            marginBottom: '24px',
+            display: 'block',
           }}
         >
-          {loading ? '處理中...' : '下班打卡'}
-        </button>
-      </div>
+          {currentTime.format('YYYY年MM月DD日 dddd')}
+        </Text>
 
-      {todayRecords.length > 0 && (
-        <div className="mt-4 text-sm opacity-90">
-          <p>今日打卡 {todayRecords.length} 次</p>
-          {todayRecords.length > 0 && (
-            <p>
-              最後打卡: {formatTime(todayRecords[0].timestamp.toDate ? todayRecords[0].timestamp.toDate() : new Date(todayRecords[0].timestamp))}
-            </p>
-          )}
+        <div style={{ marginBottom: '24px' }}>
+          <Badge 
+            status={statusInfo.status} 
+            text={
+              <Text style={{ color: 'white', fontSize: '16px' }}>
+                {statusInfo.text}
+              </Text>
+            } 
+          />
         </div>
-      )}
-    </div>
+
+        <Space size="large">
+          <Button
+            type="primary"
+            size="large"
+            icon={<LoginOutlined />}
+            loading={loading}
+            disabled={!canClockIn()}
+            onClick={handleClockIn}
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              borderColor: 'rgba(255, 255, 255, 0.3)',
+              color: 'white',
+              fontWeight: '600',
+            }}
+            ghost
+          >
+            上班打卡
+          </Button>
+          
+          <Button
+            type="primary"
+            size="large"
+            icon={<LogoutOutlined />}
+            loading={loading}
+            disabled={!canClockOut()}
+            onClick={handleClockOut}
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              borderColor: 'rgba(255, 255, 255, 0.3)',
+              color: 'white',
+              fontWeight: '600',
+            }}
+            ghost
+          >
+            下班打卡
+          </Button>
+        </Space>
+
+        {todayRecords.length > 0 && (
+          <div style={{ marginTop: '24px', opacity: 0.9 }}>
+            <Space direction="vertical" size="small">
+              <Text style={{ color: 'white', fontSize: '14px' }}>
+                今日打卡 {todayRecords.length} 次
+              </Text>
+              <Text style={{ color: 'white', fontSize: '14px' }}>
+                最後打卡: {dayjs(todayRecords[0].timestamp.toDate ? 
+                  todayRecords[0].timestamp.toDate() : 
+                  new Date(todayRecords[0].timestamp)
+                ).format('HH:mm:ss')}
+              </Text>
+            </Space>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 };
 
