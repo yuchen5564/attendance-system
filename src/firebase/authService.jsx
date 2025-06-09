@@ -1,136 +1,117 @@
-// src/firebase/authService.js
 import { 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  signOut,
+  signOut, 
   onAuthStateChanged,
-  updateProfile,
-  sendPasswordResetEmail
+  createUserWithEmailAndPassword
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { 
+  doc, 
+  setDoc, 
+  getDoc, 
+  collection, 
+  query, 
+  where, 
+  getDocs 
+} from 'firebase/firestore';
 import { auth, db } from './config';
 
-// 登入
-export const loginUser = async (email, password) => {
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    
-    // 取得用戶資料
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      return {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        ...userData
-      };
-    } else {
-      throw new Error('用戶資料不存在');
-    }
-  } catch (error) {
-    console.error('登入錯誤:', error);
-    throw error;
-  }
-};
-
-// 註冊
-export const registerUser = async (email, password, userData) => {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    
-    // 更新 Firebase Auth 的 displayName
-    await updateProfile(user, {
-      displayName: userData.name
-    });
-    
-    // 在 Firestore 中創建用戶文檔
-    await setDoc(doc(db, 'users', user.uid), {
-      ...userData,
-      email,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
-    
-    return {
-      uid: user.uid,
-      email: user.email,
-      displayName: userData.name,
-      ...userData
-    };
-  } catch (error) {
-    console.error('註冊錯誤:', error);
-    throw error;
-  }
-};
-
-// 登出
-export const logoutUser = async () => {
-  try {
-    await signOut(auth);
-  } catch (error) {
-    console.error('登出錯誤:', error);
-    throw error;
-  }
-};
-
-// 重設密碼
-export const resetPassword = async (email) => {
-  try {
-    await sendPasswordResetEmail(auth, email);
-  } catch (error) {
-    console.error('重設密碼錯誤:', error);
-    throw error;
-  }
-};
-
-// 監聽認證狀態變化
-export const onAuthStateChange = (callback) => {
-  return onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      // 用戶已登入，取得用戶資料
-      try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          callback({
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            ...userData
-          });
-        } else {
-          callback(null);
-        }
-      } catch (error) {
-        console.error('取得用戶資料錯誤:', error);
-        callback(null);
+export const authService = {
+  // 登入
+  async signIn(email, password) {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // 獲取用戶詳細資料
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists()) {
+        return { user, userData: userDoc.data() };
+      } else {
+        throw new Error('用戶資料不存在');
       }
-    } else {
-      // 用戶已登出
-      callback(null);
+    } catch (error) {
+      console.error('登入錯誤:', error);
+      throw error;
     }
-  });
-};
+  },
 
-// 更新用戶資料
-export const updateUserProfile = async (uid, userData) => {
-  try {
-    await updateDoc(doc(db, 'users', uid), {
-      ...userData,
-      updatedAt: new Date().toISOString()
-    });
-    
-    // 如果有更新 displayName，也更新 Firebase Auth
-    if (userData.name && auth.currentUser) {
-      await updateProfile(auth.currentUser, {
-        displayName: userData.name
-      });
+  // 登出
+  async signOut() {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('登出錯誤:', error);
+      throw error;
     }
-  } catch (error) {
-    console.error('更新用戶資料錯誤:', error);
-    throw error;
+  },
+
+  // 註冊新用戶 (管理員功能)
+  async createUser(userData) {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        userData.email, 
+        userData.password
+      );
+      const user = userCredential.user;
+
+      // 儲存用戶詳細資料到 Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        email: userData.email,
+        name: userData.name,
+        department: userData.department,
+        position: userData.position,
+        role: userData.role || 'employee',
+        workingHours: userData.workingHours || {
+          start: '09:00',
+          end: '18:00'
+        },
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      return user;
+    } catch (error) {
+      console.error('創建用戶錯誤:', error);
+      throw error;
+    }
+  },
+
+  // 更新用戶資料（不包含密碼）
+  async updateUser(userData) {
+    try {
+      // 注意：由於 Firebase 安全限制，無法直接修改其他用戶的密碼
+      // 如果需要重設密碼，建議使用 Firebase 的密碼重設功能
+      const { uid, password, ...updateData } = userData;
+      
+      // 只更新 Firestore 中的用戶資料
+      await updateDoc(doc(db, 'users', uid), {
+        ...updateData,
+        updatedAt: new Date()
+      });
+
+      // 如果管理員想要重設用戶密碼，需要發送密碼重設郵件
+      if (password && password.trim()) {
+        console.log('注意：管理員無法直接修改用戶密碼，建議使用密碼重設功能');
+        throw new Error('安全考量：無法直接修改用戶密碼，請使用密碼重設功能');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('更新用戶錯誤:', error);
+      throw error;
+    }
+  },
+
+  // 監聽身份驗證狀態變化
+  onAuthStateChange(callback) {
+    return onAuthStateChanged(auth, callback);
+  },
+
+  // 獲取當前用戶
+  getCurrentUser() {
+    return auth.currentUser;
   }
 };

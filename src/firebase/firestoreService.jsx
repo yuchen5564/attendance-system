@@ -1,373 +1,269 @@
-// src/firebase/firestoreService.js
 import { 
   collection, 
   doc, 
   addDoc, 
+  getDoc, 
+  getDocs, 
   updateDoc, 
   deleteDoc, 
-  getDocs, 
-  getDoc,
   query, 
   where, 
   orderBy, 
-  onSnapshot,
+  limit,
+  startAfter,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './config';
 
-// 員工管理
-export const employeeService = {
-  // 新增員工
-  create: async (employeeData) => {
+export const firestoreService = {
+  // 打卡相關
+  async clockIn(userId) {
     try {
-      const docRef = await addDoc(collection(db, 'employees'), {
-        ...employeeData,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+      const clockInData = {
+        userId,
+        type: 'clock_in',
+        timestamp: new Date(),
+        createdAt: serverTimestamp()
+      };
+      
+      const docRef = await addDoc(collection(db, 'attendance'), clockInData);
       return docRef.id;
     } catch (error) {
-      console.error('新增員工錯誤:', error);
+      console.error('打卡錯誤:', error);
       throw error;
     }
   },
 
-  // 取得所有員工
-  getAll: async () => {
+  async clockOut(userId) {
     try {
-      const querySnapshot = await getDocs(
-        query(collection(db, 'employees'), orderBy('createdAt', 'desc'))
-      );
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      console.error('取得員工列表錯誤:', error);
-      throw error;
-    }
-  },
-
-  // 根據部門取得員工
-  getByDepartment: async (department) => {
-    try {
-      const q = query(
-        collection(db, 'employees'), 
-        where('department', '==', department),
-        orderBy('createdAt', 'desc')
-      );
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      console.error('取得部門員工錯誤:', error);
-      throw error;
-    }
-  },
-
-  // 更新員工
-  update: async (id, employeeData) => {
-    try {
-      await updateDoc(doc(db, 'employees', id), {
-        ...employeeData,
-        updatedAt: serverTimestamp()
-      });
-    } catch (error) {
-      console.error('更新員工錯誤:', error);
-      throw error;
-    }
-  },
-
-  // 刪除員工
-  delete: async (id) => {
-    try {
-      await deleteDoc(doc(db, 'employees', id));
-    } catch (error) {
-      console.error('刪除員工錯誤:', error);
-      throw error;
-    }
-  },
-
-  // 監聽員工變化
-  listen: (callback) => {
-    return onSnapshot(
-      query(collection(db, 'employees'), orderBy('createdAt', 'desc')),
-      (snapshot) => {
-        const employees = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        callback(employees);
-      },
-      (error) => {
-        console.error('監聽員工變化錯誤:', error);
-      }
-    );
-  }
-};
-
-// 出勤記錄管理
-export const attendanceService = {
-  // 新增出勤記錄
-  create: async (attendanceData) => {
-    try {
-      const docRef = await addDoc(collection(db, 'attendance'), {
-        ...attendanceData,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+      const clockOutData = {
+        userId,
+        type: 'clock_out',
+        timestamp: new Date(),
+        createdAt: serverTimestamp()
+      };
+      
+      const docRef = await addDoc(collection(db, 'attendance'), clockOutData);
       return docRef.id;
     } catch (error) {
-      console.error('新增出勤記錄錯誤:', error);
+      console.error('打卡錯誤:', error);
       throw error;
     }
   },
 
-  // 取得所有出勤記錄
-  getAll: async () => {
+  // 獲取用戶打卡記錄
+  async getAttendanceRecords(userId = null, startDate = null, endDate = null) {
     try {
-      const querySnapshot = await getDocs(
-        query(collection(db, 'attendance'), orderBy('date', 'desc'))
-      );
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      console.error('取得出勤記錄錯誤:', error);
-      throw error;
-    }
-  },
-
-  // 根據員工ID取得出勤記錄
-  getByEmployee: async (employeeId) => {
-    try {
-      const q = query(
-        collection(db, 'attendance'),
-        where('employeeId', '==', employeeId),
-        orderBy('date', 'desc')
-      );
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      console.error('取得員工出勤記錄錯誤:', error);
-      throw error;
-    }
-  },
-
-  // 根據日期範圍取得出勤記錄
-  getByDateRange: async (startDate, endDate) => {
-    try {
-      const q = query(
-        collection(db, 'attendance'),
-        where('date', '>=', startDate),
-        where('date', '<=', endDate),
-        orderBy('date', 'desc')
-      );
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      console.error('取得日期範圍出勤記錄錯誤:', error);
-      throw error;
-    }
-  },
-
-  // 更新出勤記錄
-  update: async (id, attendanceData) => {
-    try {
-      await updateDoc(doc(db, 'attendance', id), {
-        ...attendanceData,
-        updatedAt: serverTimestamp()
-      });
-    } catch (error) {
-      console.error('更新出勤記錄錯誤:', error);
-      throw error;
-    }
-  },
-
-  // 監聽出勤記錄變化
-  listen: (callback) => {
-    return onSnapshot(
-      query(collection(db, 'attendance'), orderBy('date', 'desc')),
-      (snapshot) => {
-        const records = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        callback(records);
-      },
-      (error) => {
-        console.error('監聽出勤記錄變化錯誤:', error);
-      }
-    );
-  }
-};
-
-// 請假管理
-export const leaveService = {
-  // 新增請假申請
-  create: async (leaveData) => {
-    try {
-      const docRef = await addDoc(collection(db, 'leaves'), {
-        ...leaveData,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-      return docRef.id;
-    } catch (error) {
-      console.error('新增請假申請錯誤:', error);
-      throw error;
-    }
-  },
-
-  // 取得所有請假記錄
-  getAll: async () => {
-    try {
-      const querySnapshot = await getDocs(
-        query(collection(db, 'leaves'), orderBy('appliedAt', 'desc'))
-      );
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      console.error('取得請假記錄錯誤:', error);
-      throw error;
-    }
-  },
-
-  // 根據員工ID取得請假記錄
-  getByEmployee: async (employeeId) => {
-    try {
-      const q = query(
-        collection(db, 'leaves'),
-        where('employeeId', '==', employeeId),
-        orderBy('appliedAt', 'desc')
-      );
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      console.error('取得員工請假記錄錯誤:', error);
-      throw error;
-    }
-  },
-
-  // 根據狀態取得請假記錄
-  getByStatus: async (status) => {
-    try {
-      const q = query(
-        collection(db, 'leaves'),
-        where('status', '==', status),
-        orderBy('appliedAt', 'desc')
-      );
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      console.error('取得請假記錄錯誤:', error);
-      throw error;
-    }
-  },
-
-  // 更新請假記錄（審核）
-  update: async (id, leaveData) => {
-    try {
-      await updateDoc(doc(db, 'leaves', id), {
-        ...leaveData,
-        updatedAt: serverTimestamp()
-      });
-    } catch (error) {
-      console.error('更新請假記錄錯誤:', error);
-      throw error;
-    }
-  },
-
-  // 監聽請假記錄變化
-  listen: (callback) => {
-    return onSnapshot(
-      query(collection(db, 'leaves'), orderBy('appliedAt', 'desc')),
-      (snapshot) => {
-        const leaves = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        callback(leaves);
-      },
-      (error) => {
-        console.error('監聽請假記錄變化錯誤:', error);
-      }
-    );
-  }
-};
-
-// 系統設定管理
-export const settingsService = {
-  // 取得系統設定
-  get: async () => {
-    try {
-      const docRef = doc(db, 'settings', 'company');
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        return docSnap.data();
-      } else {
-        // 如果沒有設定，返回預設值
-        return {
-          companyName: '範例公司',
-          workHours: { start: '09:00', end: '18:00' },
-          breakTime: { start: '12:00', end: '13:00' },
-          overtimeRate: 1.5,
-          lateThreshold: 15,
-          notifications: {
-            email: true,
-            sms: false,
-            push: true
-          }
-        };
-      }
-    } catch (error) {
-      console.error('取得系統設定錯誤:', error);
-      throw error;
-    }
-  },
-
-  // 更新系統設定
-  update: async (settingsData) => {
-    try {
-      await updateDoc(doc(db, 'settings', 'company'), {
-        ...settingsData,
-        updatedAt: serverTimestamp()
-      });
-    } catch (error) {
-      console.error('更新系統設定錯誤:', error);
-      throw error;
-    }
-  },
-
-  // 監聽系統設定變化
-  listen: (callback) => {
-    return onSnapshot(
-      doc(db, 'settings', 'company'),
-      (doc) => {
-        if (doc.exists()) {
-          callback(doc.data());
+      let q;
+      
+      if (userId) {
+        // 獲取特定用戶的記錄
+        q = query(
+          collection(db, 'attendance'),
+          where('userId', '==', userId),
+          orderBy('timestamp', 'desc')
+        );
+        
+        if (startDate && endDate) {
+          q = query(
+            collection(db, 'attendance'),
+            where('userId', '==', userId),
+            where('timestamp', '>=', startDate),
+            where('timestamp', '<=', endDate),
+            orderBy('timestamp', 'desc')
+          );
         }
-      },
-      (error) => {
-        console.error('監聽系統設定變化錯誤:', error);
+      } else {
+        // 獲取所有記錄（管理員用）
+        q = query(
+          collection(db, 'attendance'),
+          orderBy('timestamp', 'desc')
+        );
       }
-    );
+
+      const querySnapshot = await getDocs(q);
+      const records = [];
+      querySnapshot.forEach((doc) => {
+        records.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      console.log('載入出勤記錄數量:', records.length); // 除錯用
+      return records;
+    } catch (error) {
+      console.error('獲取打卡記錄錯誤:', error);
+      throw error;
+    }
+  },
+
+  // 請假相關
+  async submitLeaveRequest(leaveData) {
+    try {
+      const docRef = await addDoc(collection(db, 'leaveRequests'), {
+        ...leaveData,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('提交請假申請錯誤:', error);
+      throw error;
+    }
+  },
+
+  async getLeaveRequests(userId = null, status = null) {
+    try {
+      let q = collection(db, 'leaveRequests');
+      const constraints = [];
+      
+      if (userId) {
+        constraints.push(where('userId', '==', userId));
+      }
+      
+      if (status) {
+        constraints.push(where('status', '==', status));
+      }
+      
+      constraints.push(orderBy('createdAt', 'desc'));
+      
+      if (constraints.length > 0) {
+        q = query(q, ...constraints);
+      }
+
+      const querySnapshot = await getDocs(q);
+      const requests = [];
+      querySnapshot.forEach((doc) => {
+        requests.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      console.log('載入請假申請數量:', requests.length); // 除錯用
+      return requests;
+    } catch (error) {
+      console.error('獲取請假申請錯誤:', error);
+      throw error;
+    }
+  },
+
+  async approveLeaveRequest(requestId, approverId, comments = '') {
+    try {
+      await updateDoc(doc(db, 'leaveRequests', requestId), {
+        status: 'approved',
+        approverId,
+        approvedAt: serverTimestamp(),
+        comments,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('批准請假申請錯誤:', error);
+      throw error;
+    }
+  },
+
+  async rejectLeaveRequest(requestId, approverId, comments = '') {
+    try {
+      await updateDoc(doc(db, 'leaveRequests', requestId), {
+        status: 'rejected',
+        approverId,
+        rejectedAt: serverTimestamp(),
+        comments,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('拒絕請假申請錯誤:', error);
+      throw error;
+    }
+  },
+
+  // 用戶管理
+  async getAllUsers() {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'users'));
+      const users = [];
+      querySnapshot.forEach((doc) => {
+        users.push({
+          id: doc.id,
+          uid: doc.id, // 確保有 uid 欄位
+          ...doc.data()
+        });
+      });
+      console.log('載入用戶數量:', users.length); // 除錯用
+      return users;
+    } catch (error) {
+      console.error('獲取用戶列表錯誤:', error);
+      throw error;
+    }
+  },
+
+  async getUserById(userId) {
+    try {
+      const docSnap = await getDoc(doc(db, 'users', userId));
+      if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() };
+      } else {
+        return null;
+      }
+    } catch (error) {
+      console.error('獲取用戶資料錯誤:', error);
+      throw error;
+    }
+  },
+
+  async updateUser(userId, userData) {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        ...userData,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('更新用戶資料錯誤:', error);
+      throw error;
+    }
+  },
+
+  // 檢查當天是否已打卡
+  async getTodayAttendance(userId) {
+    try {
+      console.log('獲取今日打卡記錄，用戶ID:', userId);
+      
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+      console.log('日期範圍:', { startOfDay, endOfDay });
+
+      const q = query(
+        collection(db, 'attendance'),
+        where('userId', '==', userId),
+        where('timestamp', '>=', startOfDay),
+        where('timestamp', '<', endOfDay),
+        orderBy('timestamp', 'desc')
+      );
+
+      const querySnapshot = await getDocs(q);
+      const records = [];
+      querySnapshot.forEach((doc) => {
+        records.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      console.log('今日打卡記錄數量:', records.length);
+      return records;
+    } catch (error) {
+      console.error('獲取今日打卡記錄錯誤:', error);
+      // 如果是索引問題，返回空陣列而不是拋出錯誤
+      if (error.code === 'failed-precondition' || error.message.includes('index')) {
+        console.warn('⚠️ Firestore 索引問題，返回空記錄');
+        return [];
+      }
+      throw error;
+    }
   }
 };
