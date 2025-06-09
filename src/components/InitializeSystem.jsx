@@ -60,12 +60,20 @@ const InitializeSystem = () => {
   return (
     <div 
       style={{
-        minHeight: '100vh',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '24px',
+        overflow: 'auto',
+        boxSizing: 'border-box'
       }}
     >
       <Card
@@ -73,6 +81,9 @@ const InitializeSystem = () => {
           width: '100%',
           maxWidth: '500px',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          margin: 'auto',
+          position: 'relative',
+          zIndex: 1
         }}
       >
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>

@@ -229,7 +229,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
           />
         </Form.Item>
 
-        {employee && (
+        {/* {employee && (
           <Form.Item
             name="isActive"
             label="啟用狀態"
@@ -240,7 +240,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
               unCheckedChildren="停用" 
             />
           </Form.Item>
-        )}
+        )} */}
 
         <Form.Item style={{ marginBottom: 0, marginTop: '24px' }}>
           <Space style={{ width: '100%', justifyContent: 'flex-end' }}>

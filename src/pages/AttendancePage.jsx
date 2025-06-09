@@ -19,7 +19,8 @@ import {
   FilterOutlined, 
   ClockCircleOutlined,
   LoginOutlined,
-  LogoutOutlined
+  LogoutOutlined,
+  ReloadOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../firebase/firestoreService';
@@ -287,6 +288,14 @@ const AttendancePage = () => {
             <ClockCircleOutlined />
             出勤記錄 ({filteredRecords.length} 筆)
           </Space>
+        }
+        extra={
+          <Button 
+            icon={<ReloadOutlined />} 
+            onClick={loadData}
+          >
+            重新載入
+          </Button>
         }
       >
         <Table

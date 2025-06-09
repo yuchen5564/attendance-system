@@ -11,9 +11,10 @@ import {
   collection, 
   query, 
   where, 
-  getDocs 
+  getDocs,
+  updateDoc 
 } from 'firebase/firestore';
-import { auth, db } from './config';
+import { auth, db, secondaryAuth } from './config';
 
 export const authService = {
   // 登入
@@ -45,19 +46,20 @@ export const authService = {
     }
   },
 
-  // 註冊新用戶 (管理員功能)
+  // 註冊新用戶 (管理員功能) - 使用第二個 Auth 實例
   async createUser(userData) {
     try {
+      // 使用第二個 Auth 實例創建用戶，不會影響主要的登入狀態
       const userCredential = await createUserWithEmailAndPassword(
-        auth, 
+        secondaryAuth, 
         userData.email, 
         userData.password
       );
-      const user = userCredential.user;
+      const newUser = userCredential.user;
 
-      // 儲存用戶詳細資料到 Firestore
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
+      // 儲存新用戶詳細資料到 Firestore
+      await setDoc(doc(db, 'users', newUser.uid), {
+        uid: newUser.uid,
         email: userData.email,
         name: userData.name,
         department: userData.department,
@@ -72,7 +74,10 @@ export const authService = {
         updatedAt: new Date()
       });
 
-      return user;
+      // 登出第二個實例的用戶（清理狀態）
+      await signOut(secondaryAuth);
+
+      return newUser;
     } catch (error) {
       console.error('創建用戶錯誤:', error);
       throw error;

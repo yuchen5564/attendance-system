@@ -19,7 +19,8 @@ import {
   CheckOutlined, 
   CloseOutlined, 
   EyeOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  ReloadOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../firebase/firestoreService';
@@ -225,6 +226,14 @@ const LeaveRequestsPage = () => {
             <CalendarOutlined />
             請假申請 ({filteredRequests.length} 筆)
           </Space>
+        }
+        extra={
+          <Button 
+            icon={<ReloadOutlined />} 
+            onClick={loadData}
+          >
+            重新載入
+          </Button>
         }
       >
         {filteredRequests.length === 0 ? (

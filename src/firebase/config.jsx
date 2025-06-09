@@ -20,4 +20,8 @@ export const auth = getAuth(app);
 // Initialize Cloud Firestore and get a reference to the service
 export const db = getFirestore(app);
 
+// 第二個 Firebase 實例（用於創建新用戶，不影響當前登入狀態）
+export const secondaryApp = initializeApp(firebaseConfig, 'secondary');
+export const secondaryAuth = getAuth(secondaryApp);
+
 export default app;

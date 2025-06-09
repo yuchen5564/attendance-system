@@ -232,7 +232,7 @@ const EmployeesPage = () => {
           >
             重設密碼
           </Button>
-          {record.isActive !== false && (
+          {/* {record.isActive !== false && (
             <Popconfirm
               title="確定要停用此員工嗎？"
               description="此操作將停用員工帳戶"
@@ -249,7 +249,7 @@ const EmployeesPage = () => {
                 停用
               </Button>
             </Popconfirm>
-          )}
+          )} */}
         </Space>
       ),
     });
