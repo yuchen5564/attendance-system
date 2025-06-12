@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider, Layout, theme, App as AntApp } from 'antd';
-import zhCN from 'antd/locale/zh_CN';
+import zhTW from 'antd/locale/zh_TW';
 import dayjs from 'dayjs';
-import 'dayjs/locale/zh-cn';
+import 'dayjs/locale/zh-tw';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoadingSpinner from './components/LoadingSpinner';
 import InitializeSystem from './components/InitializeSystem';
@@ -18,7 +18,7 @@ import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
 
 // 設定 dayjs 語言
-dayjs.locale('zh-cn');
+dayjs.locale('zh-tw');
 
 const { Content, Sider } = Layout;
 
@@ -164,7 +164,7 @@ const AppContent = () => {
 const App = () => {
   return (
     <ConfigProvider 
-      locale={zhCN}
+      locale={zhTW}
       theme={{
         token: {
           colorPrimary: '#3b82f6',

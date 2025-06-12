@@ -131,7 +131,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       // 標記系統為已初始化，並傳入公司名稱
-      const companyName = adminData.department || '企業打卡系統';
+      const companyName = adminData.companyName || adminData.department || '企業打卡系統';
       await systemService.markSystemInitialized(companyName);
       
       // 更新系統初始化狀態
@@ -172,6 +172,43 @@ export const AuthProvider = ({ children }) => {
     };
   };
 
+  const getDepartments = async () => {
+    return await systemService.getDepartments();
+  };
+
+  const addDepartment = async (departmentData) => {
+    try {
+      const newDepartment = await systemService.addDepartment(departmentData);
+      await loadSystemSettings(); // 重新載入設定
+      return newDepartment;
+    } catch (error) {
+      console.error('新增部門失敗:', error);
+      throw error;
+    }
+  };
+
+  const deleteDepartment = async (departmentId) => {
+    try {
+      await systemService.deleteDepartment(departmentId);
+      await loadSystemSettings(); // 重新載入設定
+      return true;
+    } catch (error) {
+      console.error('刪除部門失敗:', error);
+      throw error;
+    }
+  };
+
+  const updateDepartment = async (departmentId, departmentData) => {
+    try {
+      const updatedDepartment = await systemService.updateDepartment(departmentId, departmentData);
+      await loadSystemSettings(); // 重新載入設定
+      return updatedDepartment;
+    } catch (error) {
+      console.error('更新部門失敗:', error);
+      throw error;
+    }
+  };
+
   const value = {
     user,
     userData,
@@ -190,7 +227,12 @@ export const AuthProvider = ({ children }) => {
     updateSystemSettings,
     loadSystemSettings,
     getCompanyName,
-    getWorkingHours
+    getWorkingHours,
+    // 部門管理相關
+    getDepartments,
+    addDepartment,
+    deleteDepartment,
+    updateDepartment
   };
 
   return (

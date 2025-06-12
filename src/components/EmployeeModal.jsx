@@ -9,42 +9,39 @@ import {
   Button, 
   Alert,
   Space,
-  App
+  App,
+  Spin
 } from 'antd';
 import { 
   UserOutlined, 
   MailOutlined, 
   HomeOutlined, 
   ClockCircleOutlined,
-  LockOutlined
+  LockOutlined,
+  TeamOutlined
 } from '@ant-design/icons';
+import { useAuth } from '../contexts/AuthContext';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
 
 const EmployeeModal = ({ employee, onClose, onSubmit }) => {
+  const { getDepartments } = useAuth();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
+  const [departments, setDepartments] = useState([]);
   const { message } = App.useApp();
-
-  const departments = [
-    '人力資源部',
-    '財務部',
-    '資訊部',
-    '業務部',
-    '行銷部',
-    '研發部',
-    '製造部',
-    '品管部',
-    '客服部',
-    '總務部'
-  ];
 
   const roles = [
     { value: 'employee', label: '一般員工' },
     { value: 'manager', label: '部門主管' },
     { value: 'admin', label: '系統管理員' }
   ];
+
+  useEffect(() => {
+    loadDepartments();
+  }, []);
 
   useEffect(() => {
     if (employee) {
@@ -68,6 +65,23 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
       });
     }
   }, [employee, form]);
+
+  const loadDepartments = async () => {
+    try {
+      setDepartmentsLoading(true);
+      const deptList = await getDepartments();
+      setDepartments(deptList || []);
+    } catch (error) {
+      console.error('載入部門列表失敗:', error);
+      message.error('載入部門列表失敗');
+      // 設定預設部門列表作為備案
+      setDepartments([
+        { id: 'it', name: '資訊部', description: '負責資訊系統開發與維護', isDefault: true }
+      ]);
+    } finally {
+      setDepartmentsLoading(false);
+    }
+  };
 
   const handleSubmit = async (values) => {
     setLoading(true);
@@ -190,10 +204,38 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
           >
             <Select
               placeholder="請選擇部門"
-              allowClear
+              loading={departmentsLoading}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+              notFoundContent={departmentsLoading ? <Spin size="small" /> : '無可用部門'}
+              dropdownRender={(menu) => (
+                <div>
+                  {menu}
+                  {departments.length === 0 && !departmentsLoading && (
+                    <div style={{ 
+                      padding: '8px 12px', 
+                      textAlign: 'center', 
+                      color: '#999',
+                      fontSize: '12px'
+                    }}>
+                      暫無可用部門，請先在系統設定中新增部門
+                    </div>
+                  )}
+                </div>
+              )}
             >
               {departments.map(dept => (
-                <Option key={dept} value={dept}>{dept}</Option>
+                <Option key={dept.id} value={dept.name}>
+                  <Space>
+                    <TeamOutlined />
+                    {dept.name}
+                    {dept.isDefault && (
+                      <span style={{ color: '#1890ff', fontSize: '11px' }}>(預設)</span>
+                    )}
+                  </Space>
+                </Option>
               ))}
             </Select>
           </Form.Item>
@@ -209,12 +251,16 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
 
         <Form.Item
           name="role"
-          label="角色"
+          label="角色權限"
+          rules={[{ required: true, message: '請選擇角色權限' }]}
         >
-          <Select placeholder="請選擇角色">
+          <Select placeholder="請選擇角色權限">
             {roles.map(role => (
               <Option key={role.value} value={role.value}>
-                {role.label}
+                <Space>
+                  <UserOutlined />
+                  {role.label}
+                </Space>
               </Option>
             ))}
           </Select>
@@ -223,6 +269,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
         <Form.Item
           name="workingHours"
           label="工作時間"
+          rules={[{ required: true, message: '請設定工作時間' }]}
         >
           <TimePicker.RangePicker
             format="HH:mm"
@@ -231,6 +278,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
           />
         </Form.Item>
 
+        {/* 如果需要啟用/停用功能，可以取消註解 */}
         {/* {employee && (
           <Form.Item
             name="isActive"
@@ -253,6 +301,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
               type="primary" 
               htmlType="submit" 
               loading={loading}
+              disabled={departments.length === 0 && !departmentsLoading}
             >
               {employee ? '更新' : '創建'}
             </Button>

@@ -38,7 +38,16 @@ const DEFAULT_SETTINGS = {
     emailNotifications: true,
     reminderTime: '08:30',
     weekendReminders: false
-  }
+  },
+  departments: [
+    {
+      id: 'it',
+      name: '資訊部',
+      description: '負責資訊系統開發與維護',
+      isDefault: true,
+      createdAt: new Date()
+    }
+  ]
 };
 
 export const systemService = {
@@ -136,10 +145,21 @@ export const systemService = {
   // 更新系統設定
   async updateSystemSettings(newSettings) {
     try {
-      await updateDoc(doc(db, 'system', 'settings'), {
+      // 獲取現有設定
+      const currentSettings = await this.getSystemSettings();
+      
+      // 合併設定，確保不會遺失現有資料
+      const mergedSettings = {
+        ...currentSettings,
         ...newSettings,
+        // 特別處理部門列表 - 如果新設定沒有部門列表，保留現有的
+        departments: newSettings.departments !== undefined 
+          ? newSettings.departments 
+          : (currentSettings.departments || DEFAULT_SETTINGS.departments),
         updatedAt: serverTimestamp()
-      });
+      };
+      
+      await updateDoc(doc(db, 'system', 'settings'), mergedSettings);
       
       console.log('系統設定已更新');
       return true;
@@ -182,6 +202,119 @@ export const systemService = {
     } catch (error) {
       console.error('獲取工作時間設定失敗:', error);
       return DEFAULT_SETTINGS.workingHours;
+    }
+  },
+
+  // 獲取部門列表（快捷方法）
+  async getDepartments() {
+    try {
+      const settings = await this.getSystemSettings();
+      return settings.departments || DEFAULT_SETTINGS.departments;
+    } catch (error) {
+      console.error('獲取部門列表失敗:', error);
+      return DEFAULT_SETTINGS.departments;
+    }
+  },
+
+  // 新增部門
+  async addDepartment(departmentData) {
+    try {
+      const settings = await this.getSystemSettings();
+      const departments = settings.departments || [];
+      
+      const newDepartment = {
+        id: Date.now().toString(), // 簡單的 ID 生成
+        name: departmentData.name,
+        description: departmentData.description || '',
+        isDefault: false,
+        createdAt: new Date()
+      };
+
+      // 檢查部門名稱是否已存在
+      const exists = departments.some(dept => dept.name === newDepartment.name);
+      if (exists) {
+        throw new Error('部門名稱已存在');
+      }
+
+      const updatedDepartments = [...departments, newDepartment];
+      
+      // 只更新部門列表，保留其他設定
+      await this.updateSystemSettings({
+        ...settings,
+        departments: updatedDepartments
+      });
+
+      return newDepartment;
+    } catch (error) {
+      console.error('新增部門失敗:', error);
+      throw error;
+    }
+  },
+
+  // 刪除部門
+  async deleteDepartment(departmentId) {
+    try {
+      const settings = await this.getSystemSettings();
+      const departments = settings.departments || [];
+      
+      // 檢查是否為預設部門
+      const department = departments.find(dept => dept.id === departmentId);
+      if (department && department.isDefault) {
+        throw new Error('無法刪除預設部門');
+      }
+
+      const updatedDepartments = departments.filter(dept => dept.id !== departmentId);
+      
+      // 只更新部門列表，保留其他設定
+      await this.updateSystemSettings({
+        ...settings,
+        departments: updatedDepartments
+      });
+
+      return true;
+    } catch (error) {
+      console.error('刪除部門失敗:', error);
+      throw error;
+    }
+  },
+
+  // 更新部門
+  async updateDepartment(departmentId, departmentData) {
+    try {
+      const settings = await this.getSystemSettings();
+      const departments = settings.departments || [];
+      
+      const departmentIndex = departments.findIndex(dept => dept.id === departmentId);
+      if (departmentIndex === -1) {
+        throw new Error('部門不存在');
+      }
+
+      // 檢查新名稱是否與其他部門重複
+      const exists = departments.some(dept => 
+        dept.id !== departmentId && dept.name === departmentData.name
+      );
+      if (exists) {
+        throw new Error('部門名稱已存在');
+      }
+
+      const updatedDepartments = [...departments];
+      updatedDepartments[departmentIndex] = {
+        ...updatedDepartments[departmentIndex],
+        name: departmentData.name,
+        description: departmentData.description || '',
+        updatedAt: new Date()
+      };
+      
+      // 只更新部門列表，保留其他設定
+      await this.updateSystemSettings({
+        ...settings,
+        departments: updatedDepartments
+      });
+
+      return updatedDepartments[departmentIndex];
+    } catch (error) {
+      console.error('更新部門失敗:', error);
+      throw error;
     }
   },
 
