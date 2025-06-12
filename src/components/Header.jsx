@@ -13,7 +13,7 @@ const { Header: AntHeader } = Layout;
 const { Text } = Typography;
 
 const Header = ({ collapsed, setCollapsed }) => {
-  const { userData, signOut } = useAuth();
+  const { userData, signOut, getCompanyName } = useAuth();
   const { message } = App.useApp();
 
   const handleSignOut = async () => {
@@ -95,7 +95,7 @@ const Header = ({ collapsed, setCollapsed }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <ClockCircleOutlined style={{ fontSize: '24px', color: '#3b82f6' }} />
           <Text strong style={{ fontSize: '18px' }}>
-            企業打卡系統
+            {getCompanyName()} 打卡系統
           </Text>
         </div>
       </div>

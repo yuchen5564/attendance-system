@@ -51,6 +51,7 @@ const InitializeSystem = () => {
       email: 'admin@company.com',
       password: 'admin123',
       name: '系統管理員',
+      companyName: '優秀企業股份有限公司',
       department: '資訊部',
       position: '系統管理員'
     });
@@ -133,10 +134,22 @@ const InitializeSystem = () => {
             email: 'admin@company.com',
             password: 'admin123',
             name: '系統管理員',
+            companyName: '企業打卡系統',
             department: '資訊部',
             position: '系統管理員'
           }}
         >
+          <Form.Item
+            name="companyName"
+            label="公司名稱"
+            rules={[{ required: true, message: '請輸入公司名稱' }]}
+          >
+            <Input 
+              prefix={<HomeOutlined />}
+              placeholder="請輸入公司名稱" 
+            />
+          </Form.Item>
+
           <Form.Item
             name="name"
             label="管理員姓名"
@@ -216,6 +229,7 @@ const InitializeSystem = () => {
               <Text>✅ 請假申請與審核</Text>
               <Text>✅ 出勤報表分析</Text>
               <Text>✅ 多層級權限管理</Text>
+              <Text>✅ 系統設定管理</Text>
             </Space>
           }
           type="success"

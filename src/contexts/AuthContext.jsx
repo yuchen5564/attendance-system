@@ -19,6 +19,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [systemInitialized, setSystemInitialized] = useState(false);
   const [checkingSystem, setCheckingSystem] = useState(true);
+  const [systemSettings, setSystemSettings] = useState(null);
 
   useEffect(() => {
     // 首先檢查系統是否已初始化
@@ -36,6 +37,9 @@ export const AuthProvider = ({ children }) => {
           const userDoc = await firestoreService.getUserById(user.uid);
           setUser(user);
           setUserData(userDoc);
+          
+          // 載入系統設定
+          await loadSystemSettings();
         } catch (error) {
           console.error('獲取用戶資料失敗:', error);
           setUser(null);
@@ -60,6 +64,9 @@ export const AuthProvider = ({ children }) => {
       
       if (!initStatus.isInitialized) {
         setLoading(false); // 如果系統未初始化，停止載入狀態
+      } else {
+        // 如果系統已初始化，載入系統設定
+        await loadSystemSettings();
       }
     } catch (error) {
       console.error('檢查系統初始化失敗:', error);
@@ -70,12 +77,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loadSystemSettings = async () => {
+    try {
+      const settings = await systemService.getSystemSettings();
+      setSystemSettings(settings);
+    } catch (error) {
+      console.error('載入系統設定失敗:', error);
+      // 設定為 null，組件會使用預設值
+      setSystemSettings(null);
+    }
+  };
+
   const signIn = async (email, password) => {
     setLoading(true);
     try {
       const result = await authService.signIn(email, password);
       setUser(result.user);
       setUserData(result.userData);
+      
+      // 登入後載入系統設定
+      await loadSystemSettings();
+      
       return result;
     } catch (error) {
       throw error;
@@ -90,6 +112,7 @@ export const AuthProvider = ({ children }) => {
       await authService.signOut();
       setUser(null);
       setUserData(null);
+      setSystemSettings(null);
     } catch (error) {
       throw error;
     } finally {
@@ -107,11 +130,15 @@ export const AuthProvider = ({ children }) => {
         role: 'admin'
       });
 
-      // 標記系統為已初始化
-      await systemService.markSystemInitialized();
+      // 標記系統為已初始化，並傳入公司名稱
+      const companyName = adminData.department || '企業打卡系統';
+      await systemService.markSystemInitialized(companyName);
       
       // 更新系統初始化狀態
       setSystemInitialized(true);
+      
+      // 載入系統設定
+      await loadSystemSettings();
       
       return true;
     } catch (error) {
@@ -120,6 +147,29 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const updateSystemSettings = async (newSettings) => {
+    try {
+      await systemService.updateSystemSettings(newSettings);
+      setSystemSettings(newSettings);
+      return true;
+    } catch (error) {
+      console.error('更新系統設定失敗:', error);
+      throw error;
+    }
+  };
+
+  const getCompanyName = () => {
+    return systemSettings?.company?.name || '企業打卡系統';
+  };
+
+  const getWorkingHours = () => {
+    return systemSettings?.workingHours || {
+      defaultStart: '09:00',
+      defaultEnd: '18:00',
+      flexible: false
+    };
   };
 
   const value = {
@@ -134,7 +184,13 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     isAdmin: userData?.role === 'admin',
     isManager: userData?.role === 'manager',
-    isEmployee: userData?.role === 'employee'
+    isEmployee: userData?.role === 'employee',
+    // 系統設定相關
+    systemSettings,
+    updateSystemSettings,
+    loadSystemSettings,
+    getCompanyName,
+    getWorkingHours
   };
 
   return (

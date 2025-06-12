@@ -29,6 +29,7 @@ import {
   ExclamationCircleOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
+import { systemService } from '../firebase/systemService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import dayjs from 'dayjs';
 
@@ -36,40 +37,11 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 const SettingsPage = () => {
-  const { userData, isAdmin } = useAuth();
+  const { userData, isAdmin, systemSettings, updateSystemSettings, loadSystemSettings } = useAuth();
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const [settings, setSettings] = useState({
-    company: {
-      name: '企業打卡系統',
-      address: '',
-      phone: '',
-      email: ''
-    },
-    workingHours: {
-      defaultStart: dayjs('09:00', 'HH:mm'),
-      defaultEnd: dayjs('18:00', 'HH:mm'),
-      flexible: false
-    },
-    attendance: {
-      allowEarlyClockIn: 30,
-      allowLateClockOut: 30,
-      autoClockOut: false
-    },
-    leave: {
-      requireApproval: true,
-      maxAdvanceDays: 30,
-      allowSameDay: false
-    },
-    notifications: {
-      emailNotifications: true,
-      reminderTime: dayjs('08:30', 'HH:mm'),
-      weekendReminders: false
-    }
-  });
 
   useEffect(() => {
     if (isAdmin) {
@@ -78,33 +50,16 @@ const SettingsPage = () => {
   }, [isAdmin]);
 
   useEffect(() => {
-    // 將設定數據填入表單
-    form.setFieldsValue({
-      companyName: settings.company.name,
-      companyAddress: settings.company.address,
-      companyPhone: settings.company.phone,
-      companyEmail: settings.company.email,
-      defaultWorkingHours: [settings.workingHours.defaultStart, settings.workingHours.defaultEnd],
-      flexibleWorkingHours: settings.workingHours.flexible,
-      allowEarlyClockIn: settings.attendance.allowEarlyClockIn,
-      allowLateClockOut: settings.attendance.allowLateClockOut,
-      autoClockOut: settings.attendance.autoClockOut,
-      requireApproval: settings.leave.requireApproval,
-      maxAdvanceDays: settings.leave.maxAdvanceDays,
-      allowSameDay: settings.leave.allowSameDay,
-      emailNotifications: settings.notifications.emailNotifications,
-      reminderTime: settings.notifications.reminderTime,
-      weekendReminders: settings.notifications.weekendReminders
-    });
-  }, [settings, form]);
+    // 當系統設定載入後，填入表單
+    if (systemSettings) {
+      fillFormWithSettings(systemSettings);
+    }
+  }, [systemSettings, form]);
 
   const loadSettings = async () => {
     try {
       setLoading(true);
-      // 這裡可以從 Firestore 載入系統設定
-      // 暫時使用預設設定
-      await new Promise(resolve => setTimeout(resolve, 500)); // 模擬載入
-      console.log('載入系統設定...');
+      await loadSystemSettings();
     } catch (error) {
       console.error('載入設定失敗:', error);
       message.error('載入設定失敗');
@@ -113,11 +68,34 @@ const SettingsPage = () => {
     }
   };
 
+  const fillFormWithSettings = (settings) => {
+    form.setFieldsValue({
+      companyName: settings.company?.name || '企業打卡系統',
+      companyAddress: settings.company?.address || '',
+      companyPhone: settings.company?.phone || '',
+      companyEmail: settings.company?.email || '',
+      defaultWorkingHours: [
+        dayjs(settings.workingHours?.defaultStart || '09:00', 'HH:mm'),
+        dayjs(settings.workingHours?.defaultEnd || '18:00', 'HH:mm')
+      ],
+      flexibleWorkingHours: settings.workingHours?.flexible || false,
+      allowEarlyClockIn: settings.attendance?.allowEarlyClockIn || 30,
+      allowLateClockOut: settings.attendance?.allowLateClockOut || 30,
+      autoClockOut: settings.attendance?.autoClockOut || false,
+      requireApproval: settings.leave?.requireApproval !== false, // 預設為 true
+      maxAdvanceDays: settings.leave?.maxAdvanceDays || 30,
+      allowSameDay: settings.leave?.allowSameDay || false,
+      emailNotifications: settings.notifications?.emailNotifications !== false, // 預設為 true
+      reminderTime: dayjs(settings.notifications?.reminderTime || '08:30', 'HH:mm'),
+      weekendReminders: settings.notifications?.weekendReminders || false
+    });
+  };
+
   const handleSave = async (values) => {
     try {
       setSaving(true);
       
-      // 更新設定狀態
+      // 構建新的設定物件
       const newSettings = {
         company: {
           name: values.companyName,
@@ -126,8 +104,8 @@ const SettingsPage = () => {
           email: values.companyEmail
         },
         workingHours: {
-          defaultStart: values.defaultWorkingHours[0],
-          defaultEnd: values.defaultWorkingHours[1],
+          defaultStart: values.defaultWorkingHours[0].format('HH:mm'),
+          defaultEnd: values.defaultWorkingHours[1].format('HH:mm'),
           flexible: values.flexibleWorkingHours
         },
         attendance: {
@@ -142,60 +120,32 @@ const SettingsPage = () => {
         },
         notifications: {
           emailNotifications: values.emailNotifications,
-          reminderTime: values.reminderTime,
+          reminderTime: values.reminderTime.format('HH:mm'),
           weekendReminders: values.weekendReminders
         }
       };
 
-      setSettings(newSettings);
-      
-      // 這裡可以將設定儲存到 Firestore
-      // await firestoreService.updateSettings(newSettings);
-      
-      // 模擬儲存延遲
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 更新系統設定
+      await updateSystemSettings(newSettings);
       
       message.success('設定已儲存');
     } catch (error) {
       console.error('儲存設定失敗:', error);
-      message.error('儲存設定失敗');
+      message.error('儲存設定失敗：' + error.message);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleReset = () => {
-    const defaultSettings = {
-      company: {
-        name: '企業打卡系統',
-        address: '',
-        phone: '',
-        email: ''
-      },
-      workingHours: {
-        defaultStart: dayjs('09:00', 'HH:mm'),
-        defaultEnd: dayjs('18:00', 'HH:mm'),
-        flexible: false
-      },
-      attendance: {
-        allowEarlyClockIn: 30,
-        allowLateClockOut: 30,
-        autoClockOut: false
-      },
-      leave: {
-        requireApproval: true,
-        maxAdvanceDays: 30,
-        allowSameDay: false
-      },
-      notifications: {
-        emailNotifications: true,
-        reminderTime: dayjs('08:30', 'HH:mm'),
-        weekendReminders: false
-      }
-    };
-    
-    setSettings(defaultSettings);
-    message.success('設定已重置為預設值');
+  const handleReset = async () => {
+    try {
+      await systemService.resetSystemSettings();
+      await loadSystemSettings();
+      message.success('設定已重置為預設值');
+    } catch (error) {
+      console.error('重置設定失敗:', error);
+      message.error('重置設定失敗：' + error.message);
+    }
   };
 
   if (!isAdmin) {

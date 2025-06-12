@@ -103,7 +103,7 @@ const LoginPage = () => {
             />
           </div>
           <Title level={2} style={{ marginBottom: '4px', fontSize: '24px' }}>
-            企業打卡系統
+            打卡系統 - 使用者登入
           </Title>
           <Text type="secondary">請登入您的帳戶</Text>
         </div>
