@@ -186,6 +186,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
           <Form.Item
             name="department"
             label="部門"
+            rules={[{ required: true, message: '請選擇部門' }]}
           >
             <Select
               placeholder="請選擇部門"
@@ -200,6 +201,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
           <Form.Item
             name="position"
             label="職位"
+            rules={[{ required: true, message: '請輸入職位' }]}
           >
             <Input placeholder="請輸入職位" />
           </Form.Item>
