@@ -32,12 +32,13 @@ const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
 const LeaveRequestsPage = () => {
-  const { userData, isAdmin, isManager } = useAuth();
+  const { userData, isAdmin, isManager, getLeaveTypes } = useAuth();
   const { message, modal } = App.useApp();
   const [loading, setLoading] = useState(true);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
   const [users, setUsers] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState('all');
 
@@ -50,6 +51,7 @@ const LeaveRequestsPage = () => {
 
   useEffect(() => {
     loadData();
+    loadLeaveTypes();
   }, [userData]);
 
   useEffect(() => {
@@ -58,6 +60,21 @@ const LeaveRequestsPage = () => {
       : leaveRequests.filter(request => request.status === filter);
     setFilteredRequests(filtered);
   }, [leaveRequests, filter]);
+
+  const loadLeaveTypes = async () => {
+    try {
+      const types = await getLeaveTypes();
+      setLeaveTypes(types || []);
+    } catch (error) {
+      console.error('載入請假假別失敗:', error);
+      // 設定預設假別作為備案
+      setLeaveTypes([
+        { id: 'annual', name: '特休', color: '#52c41a' },
+        { id: 'sick', name: '病假', color: '#fa8c16' },
+        { id: 'personal', name: '事假', color: '#1890ff' }
+      ]);
+    }
+  };
 
   const loadData = async () => {
     if (!userData) return;
@@ -170,18 +187,29 @@ const LeaveRequestsPage = () => {
     }
   };
 
-  const getLeaveTypeText = (type) => {
-    const types = {
-      annual: '年假',
-      sick: '病假',
-      personal: '事假',
-      maternity: '產假',
-      paternity: '陪產假',
-      funeral: '喪假',
-      marriage: '婚假',
-      other: '其他'
+  const getLeaveTypeInfo = (typeId) => {
+    // 先嘗試從系統設定的假別中找
+    const systemType = leaveTypes.find(type => type.id === typeId);
+    if (systemType) {
+      return {
+        name: systemType.name,
+        color: systemType.color || '#1890ff'
+      };
+    }
+
+    // 備案：舊的靜態假別對應
+    const legacyTypes = {
+      annual: { name: '特休', color: '#52c41a' },
+      sick: { name: '病假', color: '#fa8c16' },
+      personal: { name: '事假', color: '#1890ff' },
+      maternity: { name: '產假', color: '#722ed1' },
+      paternity: { name: '陪產假', color: '#13c2c2' },
+      funeral: { name: '喪假', color: '#595959' },
+      marriage: { name: '婚假', color: '#eb2f96' },
+      other: { name: '其他', color: '#fadb14' }
     };
-    return types[type] || type;
+    
+    return legacyTypes[typeId] || { name: typeId, color: '#1890ff' };
   };
 
   if (loading) {
@@ -255,6 +283,8 @@ const LeaveRequestsPage = () => {
             dataSource={filteredRequests}
             renderItem={(request) => {
               const statusConfig = getStatusConfig(request.status);
+              const leaveTypeInfo = getLeaveTypeInfo(request.type);
+              
               return (
                 <List.Item
                   key={request.id}
@@ -304,7 +334,16 @@ const LeaveRequestsPage = () => {
                           {(isAdmin || isManager) && (
                             <Text strong>{getUserName(request.userId)}</Text>
                           )}
-                          <Tag color="blue">{getLeaveTypeText(request.type)}</Tag>
+                          <Tag 
+                            color={leaveTypeInfo.color}
+                            style={{ 
+                              borderRadius: '12px',
+                              fontSize: '12px',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            {request.typeName || leaveTypeInfo.name}
+                          </Tag>
                         </Space>
                         <Tag color={statusConfig.color}>{statusConfig.text}</Tag>
                       </div>
@@ -328,6 +367,18 @@ const LeaveRequestsPage = () => {
                             {request.reason}
                           </Paragraph>
                         </div>
+
+                        {/* 顯示是否需要審核 */}
+                        {request.requireApproval !== undefined && (
+                          <div>
+                            <Tag 
+                              color={request.requireApproval ? 'orange' : 'green'} 
+                              size="small"
+                            >
+                              {request.requireApproval ? '需要審核' : '免審核'}
+                            </Tag>
+                          </div>
+                        )}
 
                         {request.comments && (
                           <div style={{ 

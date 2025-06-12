@@ -172,6 +172,43 @@ export const AuthProvider = ({ children }) => {
     };
   };
 
+  const getLeaveTypes = async () => {
+    return await systemService.getLeaveTypes();
+  };
+
+  const addLeaveType = async (leaveTypeData) => {
+    try {
+      const newLeaveType = await systemService.addLeaveType(leaveTypeData);
+      await loadSystemSettings(); // 重新載入設定
+      return newLeaveType;
+    } catch (error) {
+      console.error('新增請假假別失敗:', error);
+      throw error;
+    }
+  };
+
+  const deleteLeaveType = async (leaveTypeId) => {
+    try {
+      await systemService.deleteLeaveType(leaveTypeId);
+      await loadSystemSettings(); // 重新載入設定
+      return true;
+    } catch (error) {
+      console.error('刪除請假假別失敗:', error);
+      throw error;
+    }
+  };
+
+  const updateLeaveType = async (leaveTypeId, leaveTypeData) => {
+    try {
+      const updatedLeaveType = await systemService.updateLeaveType(leaveTypeId, leaveTypeData);
+      await loadSystemSettings(); // 重新載入設定
+      return updatedLeaveType;
+    } catch (error) {
+      console.error('更新請假假別失敗:', error);
+      throw error;
+    }
+  };
+
   const getDepartments = async () => {
     return await systemService.getDepartments();
   };
@@ -232,7 +269,12 @@ export const AuthProvider = ({ children }) => {
     getDepartments,
     addDepartment,
     deleteDepartment,
-    updateDepartment
+    updateDepartment,
+    // 請假假別管理相關
+    getLeaveTypes,
+    addLeaveType,
+    deleteLeaveType,
+    updateLeaveType
   };
 
   return (

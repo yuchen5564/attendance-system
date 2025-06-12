@@ -162,7 +162,7 @@ const LoginPage = () => {
           description={
             <Space direction="vertical" size="small" style={{ width: '100%' }}>
               <Text style={{ fontSize: '12px' }}>管理員: admin@company.com / admin123</Text>
-              <Text style={{ fontSize: '12px' }}>員工: employee@company.com / employee123</Text>
+              {/* <Text style={{ fontSize: '12px' }}>員工: employee@company.com / employee123</Text> */}
             </Space>
           }
           type="info"

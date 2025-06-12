@@ -47,6 +47,41 @@ const DEFAULT_SETTINGS = {
       isDefault: true,
       createdAt: new Date()
     }
+  ],
+  leaveTypes: [
+    {
+      id: 'annual',
+      name: '特休',
+      description: '員工年度特別休假',
+      daysAllowed: 14,
+      requireApproval: true,
+      color: '#52c41a',
+      isDefault: true,
+      isActive: true,
+      createdAt: new Date()
+    },
+    {
+      id: 'sick',
+      name: '病假',
+      description: '因病需要休息的假期',
+      daysAllowed: 30,
+      requireApproval: true,
+      color: '#fa8c16',
+      isDefault: true,
+      isActive: true,
+      createdAt: new Date()
+    },
+    {
+      id: 'personal',
+      name: '事假',
+      description: '因個人事務需要請假',
+      daysAllowed: 7,
+      requireApproval: true,
+      color: '#1890ff',
+      isDefault: true,
+      isActive: true,
+      createdAt: new Date()
+    }
   ]
 };
 
@@ -202,6 +237,127 @@ export const systemService = {
     } catch (error) {
       console.error('獲取工作時間設定失敗:', error);
       return DEFAULT_SETTINGS.workingHours;
+    }
+  },
+
+  // 獲取請假假別列表（快捷方法）
+  async getLeaveTypes() {
+    try {
+      const settings = await this.getSystemSettings();
+      return settings.leaveTypes || DEFAULT_SETTINGS.leaveTypes;
+    } catch (error) {
+      console.error('獲取請假假別列表失敗:', error);
+      return DEFAULT_SETTINGS.leaveTypes;
+    }
+  },
+
+  // 新增請假假別
+  async addLeaveType(leaveTypeData) {
+    try {
+      const settings = await this.getSystemSettings();
+      const leaveTypes = settings.leaveTypes || [];
+      
+      const newLeaveType = {
+        id: Date.now().toString(), // 簡單的 ID 生成
+        name: leaveTypeData.name,
+        description: leaveTypeData.description || '',
+        daysAllowed: leaveTypeData.daysAllowed || 0,
+        requireApproval: leaveTypeData.requireApproval !== false, // 預設需要審核
+        color: leaveTypeData.color || '#1890ff',
+        isDefault: false,
+        isActive: leaveTypeData.isActive !== false, // 預設啟用
+        createdAt: new Date()
+      };
+
+      // 檢查假別名稱是否已存在
+      const exists = leaveTypes.some(type => type.name === newLeaveType.name);
+      if (exists) {
+        throw new Error('假別名稱已存在');
+      }
+
+      const updatedLeaveTypes = [...leaveTypes, newLeaveType];
+      
+      // 只更新假別列表，保留其他設定
+      await this.updateSystemSettings({
+        ...settings,
+        leaveTypes: updatedLeaveTypes
+      });
+
+      return newLeaveType;
+    } catch (error) {
+      console.error('新增請假假別失敗:', error);
+      throw error;
+    }
+  },
+
+  // 刪除請假假別
+  async deleteLeaveType(leaveTypeId) {
+    try {
+      const settings = await this.getSystemSettings();
+      const leaveTypes = settings.leaveTypes || [];
+      
+      // 檢查是否為預設假別
+      const leaveType = leaveTypes.find(type => type.id === leaveTypeId);
+      if (leaveType && leaveType.isDefault) {
+        throw new Error('無法刪除預設假別');
+      }
+
+      const updatedLeaveTypes = leaveTypes.filter(type => type.id !== leaveTypeId);
+      
+      // 只更新假別列表，保留其他設定
+      await this.updateSystemSettings({
+        ...settings,
+        leaveTypes: updatedLeaveTypes
+      });
+
+      return true;
+    } catch (error) {
+      console.error('刪除請假假別失敗:', error);
+      throw error;
+    }
+  },
+
+  // 更新請假假別
+  async updateLeaveType(leaveTypeId, leaveTypeData) {
+    try {
+      const settings = await this.getSystemSettings();
+      const leaveTypes = settings.leaveTypes || [];
+      
+      const leaveTypeIndex = leaveTypes.findIndex(type => type.id === leaveTypeId);
+      if (leaveTypeIndex === -1) {
+        throw new Error('假別不存在');
+      }
+
+      // 檢查新名稱是否與其他假別重複
+      const exists = leaveTypes.some(type => 
+        type.id !== leaveTypeId && type.name === leaveTypeData.name
+      );
+      if (exists) {
+        throw new Error('假別名稱已存在');
+      }
+
+      const updatedLeaveTypes = [...leaveTypes];
+      updatedLeaveTypes[leaveTypeIndex] = {
+        ...updatedLeaveTypes[leaveTypeIndex],
+        name: leaveTypeData.name,
+        description: leaveTypeData.description || '',
+        daysAllowed: leaveTypeData.daysAllowed || 0,
+        requireApproval: leaveTypeData.requireApproval !== false,
+        color: leaveTypeData.color || '#1890ff',
+        isActive: leaveTypeData.isActive !== false,
+        updatedAt: new Date()
+      };
+      
+      // 只更新假別列表，保留其他設定
+      await this.updateSystemSettings({
+        ...settings,
+        leaveTypes: updatedLeaveTypes
+      });
+
+      return updatedLeaveTypes[leaveTypeIndex];
+    } catch (error) {
+      console.error('更新請假假別失敗:', error);
+      throw error;
     }
   },
 

@@ -197,6 +197,7 @@ const InitializeSystem = () => {
               <Input 
                 prefix={<HomeOutlined />}
                 placeholder="部門" 
+                disabled={true} // 初始時不允許修改部門
               />
             </Form.Item>
 

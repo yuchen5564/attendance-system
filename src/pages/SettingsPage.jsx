@@ -16,7 +16,8 @@ import {
   SaveOutlined, 
   ReloadOutlined, 
   LockOutlined, 
-  TeamOutlined
+  TeamOutlined,
+  CalendarOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { systemService } from '../firebase/systemService';
@@ -25,7 +26,10 @@ import { usePagination } from '../hooks/usePagination';
 import GeneralSettings from '../components/settings/GeneralSettings';
 import DepartmentManagement from '../components/settings/DepartmentManagement';
 import DepartmentModal from '../components/settings/DepartmentModal';
+import LeaveTypeManagement from '../components/settings/LeaveTypeManagement';
+import LeaveTypeModal from '../components/settings/LeaveTypeModal';
 import { createDepartmentColumns } from '../utils/departmentTableConfig';
+import { createLeaveTypeColumns } from '../utils/leaveTypeTableConfig';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -39,20 +43,27 @@ const SettingsPage = () => {
     loadSystemSettings,
     addDepartment,
     deleteDepartment,
-    updateDepartment
+    updateDepartment,
+    addLeaveType,
+    deleteLeaveType,
+    updateLeaveType
   } = useAuth();
   const { message } = App.useApp();
   
   // 表單實例
   const [form] = Form.useForm();
   const [departmentForm] = Form.useForm();
+  const [leaveTypeForm] = Form.useForm();
   
   // 狀態管理
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [departmentModalVisible, setDepartmentModalVisible] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState(null);
+  const [leaveTypeModalVisible, setLeaveTypeModalVisible] = useState(false);
+  const [editingLeaveType, setEditingLeaveType] = useState(null);
   const [departments, setDepartments] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]);
   const [activeTab, setActiveTab] = useState('general');
 
   // 部門分頁相關
@@ -66,6 +77,17 @@ const SettingsPage = () => {
     resetToFirstPage
   } = usePagination(departments, 10);
 
+  // 請假假別分頁相關
+  const {
+    currentPage: leaveTypeCurrentPage,
+    itemsPerPage: leaveTypeItemsPerPage,
+    totalItems: leaveTypeTotalItems,
+    paginatedData: paginatedLeaveTypes,
+    setCurrentPage: setLeaveTypeCurrentPage,
+    setItemsPerPage: setLeaveTypeItemsPerPage,
+    resetToFirstPage: resetLeaveTypeToFirstPage
+  } = usePagination(leaveTypes, 10);
+
   useEffect(() => {
     if (isAdmin) {
       loadSettings();
@@ -77,11 +99,14 @@ const SettingsPage = () => {
     if (systemSettings) {
       fillFormWithSettings(systemSettings);
       const deptList = systemSettings.departments || [];
+      const leaveTypeList = systemSettings.leaveTypes || [];
       setDepartments(deptList);
-      // 當部門列表更新時，重置分頁
+      setLeaveTypes(leaveTypeList);
+      // 當列表更新時，重置分頁
       resetToFirstPage();
+      resetLeaveTypeToFirstPage();
     }
-  }, [systemSettings, form, resetToFirstPage]);
+  }, [systemSettings, form, resetToFirstPage, resetLeaveTypeToFirstPage]);
 
   const loadSettings = async () => {
     try {
@@ -150,8 +175,9 @@ const SettingsPage = () => {
           reminderTime: values.reminderTime.format('HH:mm'),
           weekendReminders: values.weekendReminders
         },
-        // 保留現有的部門列表
-        departments: systemSettings?.departments || []
+        // 保留現有的部門列表和請假假別列表
+        departments: systemSettings?.departments || [],
+        leaveTypes: systemSettings?.leaveTypes || []
       };
 
       // 更新系統設定
@@ -229,8 +255,66 @@ const SettingsPage = () => {
     setEditingDepartment(null);
   };
 
-  // 生成部門表格欄位
+  // 請假假別管理相關函數
+  const handleAddLeaveType = () => {
+    setEditingLeaveType(null);
+    leaveTypeForm.resetFields();
+    setLeaveTypeModalVisible(true);
+  };
+
+  const handleEditLeaveType = (leaveType) => {
+    setEditingLeaveType(leaveType);
+    leaveTypeForm.setFieldsValue({
+      name: leaveType.name,
+      description: leaveType.description,
+      daysAllowed: leaveType.daysAllowed,
+      requireApproval: leaveType.requireApproval,
+      color: leaveType.color,
+      isActive: leaveType.isActive
+    });
+    setLeaveTypeModalVisible(true);
+  };
+
+  const handleDeleteLeaveType = async (leaveTypeId) => {
+    try {
+      await deleteLeaveType(leaveTypeId);
+      message.success('請假假別已刪除');
+      // 如果刪除後當前頁沒有資料，回到上一頁
+      if (paginatedLeaveTypes.length === 1 && leaveTypeCurrentPage > 1) {
+        setLeaveTypeCurrentPage(leaveTypeCurrentPage - 1);
+      }
+    } catch (error) {
+      message.error('刪除請假假別失敗：' + error.message);
+    }
+  };
+
+  const handleLeaveTypeSubmit = async (values) => {
+    try {
+      if (editingLeaveType) {
+        await updateLeaveType(editingLeaveType.id, values);
+        message.success('請假假別已更新');
+      } else {
+        await addLeaveType(values);
+        message.success('請假假別已新增');
+      }
+      setLeaveTypeModalVisible(false);
+      leaveTypeForm.resetFields();
+      setEditingLeaveType(null);
+    } catch (error) {
+      message.error(editingLeaveType ? '更新請假假別失敗：' : '新增請假假別失敗：' + error.message);
+    }
+  };
+
+  const handleLeaveTypeModalCancel = () => {
+    setLeaveTypeModalVisible(false);
+    leaveTypeForm.resetFields();
+    setEditingLeaveType(null);
+  };
+
+  // 生成表格欄位
+  // 生成表格欄位
   const departmentColumns = createDepartmentColumns(handleEditDepartment, handleDeleteDepartment);
+  const leaveTypeColumns = createLeaveTypeColumns(handleEditLeaveType, handleDeleteLeaveType);
 
   // 權限檢查
   if (!isAdmin) {
@@ -324,6 +408,30 @@ const SettingsPage = () => {
                 departmentColumns={departmentColumns}
               />
             )
+          },
+          {
+            key: 'leaveTypes',
+            label: (
+              <Space>
+                <CalendarOutlined />
+                假別管理
+              </Space>
+            ),
+            children: (
+              <LeaveTypeManagement
+                leaveTypes={leaveTypes}
+                paginatedLeaveTypes={paginatedLeaveTypes}
+                currentPage={leaveTypeCurrentPage}
+                itemsPerPage={leaveTypeItemsPerPage}
+                totalItems={leaveTypeTotalItems}
+                setCurrentPage={setLeaveTypeCurrentPage}
+                setItemsPerPage={setLeaveTypeItemsPerPage}
+                handleAddLeaveType={handleAddLeaveType}
+                handleEditLeaveType={handleEditLeaveType}
+                handleDeleteLeaveType={handleDeleteLeaveType}
+                leaveTypeColumns={leaveTypeColumns}
+              />
+            )
           }
         ]}
       />
@@ -335,6 +443,15 @@ const SettingsPage = () => {
         form={departmentForm}
         onSubmit={handleDepartmentSubmit}
         onCancel={handleDepartmentModalCancel}
+      />
+
+      {/* 請假假別管理 Modal */}
+      <LeaveTypeModal
+        visible={leaveTypeModalVisible}
+        editingLeaveType={editingLeaveType}
+        form={leaveTypeForm}
+        onSubmit={handleLeaveTypeSubmit}
+        onCancel={handleLeaveTypeModalCancel}
       />
     </div>
   );
