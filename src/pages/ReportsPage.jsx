@@ -11,7 +11,8 @@ import {
   Space,
   Empty,
   Progress,
-  App
+  App,
+  Tag
 } from 'antd';
 import { 
   BarChartOutlined, 
@@ -34,9 +35,10 @@ const { Title } = Typography;
 const { RangePicker } = DatePicker;
 
 const ReportsPage = () => {
-  const { userData, isAdmin, isManager } = useAuth();
+  const { userData, isAdmin, isManager, getLeaveTypes } = useAuth();
   const { message } = App.useApp();
   const [loading, setLoading] = useState(true);
+  const [leaveTypes, setLeaveTypes] = useState([]);
   const [reportData, setReportData] = useState({
     attendanceStats: {
       totalRecords: 0,
@@ -63,9 +65,25 @@ const ReportsPage = () => {
 
   useEffect(() => {
     if (isAdmin || isManager) {
+      loadLeaveTypes();
       loadReportData();
     }
   }, [userData, dateRange]);
+
+  const loadLeaveTypes = async () => {
+    try {
+      const types = await getLeaveTypes();
+      setLeaveTypes(types || []);
+    } catch (error) {
+      console.error('載入請假假別失敗:', error);
+      // 設定預設假別作為備案
+      setLeaveTypes([
+        { id: 'annual', name: '特休', color: '#52c41a' },
+        { id: 'sick', name: '病假', color: '#fa8c16' },
+        { id: 'personal', name: '事假', color: '#1890ff' }
+      ]);
+    }
+  };
 
   const loadReportData = async () => {
     try {
@@ -226,6 +244,32 @@ const ReportsPage = () => {
       .sort((a, b) => a.month.localeCompare(b.month));
   };
 
+  const getLeaveTypeInfo = (typeId) => {
+    // 從系統設定的假別中找
+    const systemType = leaveTypes.find(type => type.id === typeId);
+    if (systemType) {
+      return {
+        name: systemType.name,
+        color: systemType.color || '#1890ff',
+        description: systemType.description
+      };
+    }
+
+    // 備案：舊的靜態假別對應
+    const legacyTypes = {
+      annual: { name: '特休', color: '#52c41a', description: '員工年度特別休假' },
+      sick: { name: '病假', color: '#fa8c16', description: '因病需要休息的假期' },
+      personal: { name: '事假', color: '#1890ff', description: '因個人事務需要請假' },
+      maternity: { name: '產假', color: '#722ed1', description: '生產相關假期' },
+      paternity: { name: '陪產假', color: '#13c2c2', description: '陪產相關假期' },
+      funeral: { name: '喪假', color: '#595959', description: '親屬過世喪禮假期' },
+      marriage: { name: '婚假', color: '#eb2f96', description: '結婚相關假期' },
+      other: { name: '其他', color: '#fadb14', description: '其他類型假期' }
+    };
+    
+    return legacyTypes[typeId] || { name: typeId, color: '#1890ff', description: '未分類假期' };
+  };
+
   const exportReport = () => {
     const reportContent = [
       ['出勤報表', '', '', ''],
@@ -251,7 +295,16 @@ const ReportsPage = () => {
       ['總申請數', reportData.leaveStats.total, '', ''],
       ['待審核', reportData.leaveStats.pending, '', ''],
       ['已批准', reportData.leaveStats.approved, '', ''],
-      ['已拒絕', reportData.leaveStats.rejected, '', '']
+      ['已拒絕', reportData.leaveStats.rejected, '', ''],
+      ['', '', '', ''],
+      ['請假類型分佈', '', '', ''],
+      ['假別', '申請數', '', ''],
+      ...Object.entries(reportData.leaveStats.typeBreakdown || {}).map(([type, count]) => [
+        getLeaveTypeInfo(type).name,
+        count,
+        '',
+        ''
+      ])
     ];
 
     const csvContent = reportContent.map(row => 
@@ -361,20 +414,6 @@ const ReportsPage = () => {
   if (loading) {
     return <LoadingSpinner text="載入報表數據中..." />;
   }
-
-  const getLeaveTypeText = (type) => {
-    const types = {
-      annual: '年假',
-      sick: '病假',
-      personal: '事假',
-      maternity: '產假',
-      paternity: '陪產假',
-      funeral: '喪假',
-      marriage: '婚假',
-      other: '其他'
-    };
-    return types[type] || type;
-  };
 
   return (
     <div>
@@ -519,12 +558,32 @@ const ReportsPage = () => {
                 <div>
                   <Title level={5}>請假類型分佈</Title>
                   <Space direction="vertical" style={{ width: '100%' }}>
-                    {Object.entries(reportData.leaveStats.typeBreakdown || {}).map(([type, count]) => (
-                      <div key={type} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>{getLeaveTypeText(type)}</span>
-                        <span style={{ fontWeight: 500 }}>{count}</span>
-                      </div>
-                    ))}
+                    {Object.entries(reportData.leaveStats.typeBreakdown || {}).map(([type, count]) => {
+                      const typeInfo = getLeaveTypeInfo(type);
+                      return (
+                        <div key={type} style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '4px 0'
+                        }}>
+                          <Space>
+                            <div 
+                              style={{ 
+                                width: '8px', 
+                                height: '8px', 
+                                backgroundColor: typeInfo.color,
+                                borderRadius: '50%'
+                              }} 
+                            />
+                            <span>{typeInfo.name}</span>
+                          </Space>
+                          <Tag color={typeInfo.color} style={{ margin: 0 }}>
+                            {count}
+                          </Tag>
+                        </div>
+                      );
+                    })}
                   </Space>
                 </div>
               )}
