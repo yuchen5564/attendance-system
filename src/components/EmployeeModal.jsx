@@ -207,7 +207,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
               loading={departmentsLoading}
               showSearch
               filterOption={(input, option) =>
-                (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
               }
               notFoundContent={departmentsLoading ? <Spin size="small" /> : '無可用部門'}
               dropdownRender={(menu) => (
@@ -227,7 +227,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
               )}
             >
               {departments.map(dept => (
-                <Option key={dept.id} value={dept.name}>
+                <Option key={dept.id} value={dept.name} label={dept.name}>
                   <Space>
                     <TeamOutlined />
                     {dept.name}
