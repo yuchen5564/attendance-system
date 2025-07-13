@@ -7,6 +7,7 @@ import {
   TeamOutlined,
   BarChartOutlined,
   SettingOutlined,
+  ScheduleOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -24,6 +25,12 @@ const Sidebar = ({ currentPage, setCurrentPage, collapsed }) => {
       key: 'attendance',
       icon: <ClockCircleOutlined />,
       label: '打卡紀錄',
+      roles: ['admin', 'manager', 'employee']
+    },
+    {
+      key: 'calendar',
+      icon: <ScheduleOutlined />,
+      label: '出勤月曆',
       roles: ['admin', 'manager', 'employee']
     },
     {
