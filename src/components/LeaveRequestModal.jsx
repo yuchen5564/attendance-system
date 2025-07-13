@@ -111,8 +111,8 @@ const LeaveRequestModal = ({ onClose, onSubmit }) => {
   };
 
   const disabledDate = (current) => {
-    // 不能選擇過去的日期
-    return current && current < dayjs().startOf('day');
+    // 允許選擇任何日期，包括過去的日期
+    return false;
   };
 
   const getDaysExceeded = () => {

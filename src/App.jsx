@@ -12,6 +12,7 @@ import Sidebar from './components/Sidebar';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AttendancePage from './pages/AttendancePage';
+import CalendarPage from './pages/CalendarPage';
 import LeaveRequestsPage from './pages/LeaveRequestsPage';
 import EmployeesPage from './pages/EmployeesPage';
 import ReportsPage from './pages/ReportsPage';
@@ -52,6 +53,8 @@ const MainLayout = ({ currentPage, setCurrentPage }) => {
         return <DashboardPage />;
       case 'attendance':
         return <AttendancePage />;
+      case 'calendar':
+        return <CalendarPage />;
       case 'leave-requests':
         return <LeaveRequestsPage />;
       case 'employees':
