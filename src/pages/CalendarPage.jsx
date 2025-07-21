@@ -40,6 +40,7 @@ const CalendarPage = () => {
   const [loading, setLoading] = useState(true);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
+  const [overtimeRequests, setOvertimeRequests] = useState([]);
   const [users, setUsers] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -47,7 +48,8 @@ const CalendarPage = () => {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedDateRecords, setSelectedDateRecords] = useState({
     attendance: [],
-    leaves: []
+    leaves: [],
+    overtimes: []
   });
   const [currentMonth, setCurrentMonth] = useState(dayjs());
 
@@ -107,13 +109,15 @@ const CalendarPage = () => {
 
   const loadUserData = async (userId) => {
     try {
-      const [attendanceData, leaveData] = await Promise.all([
+      const [attendanceData, leaveData, overtimeData] = await Promise.all([
         firestoreService.getAttendanceRecords(userId),
-        firestoreService.getLeaveRequests(userId)
+        firestoreService.getLeaveRequests(userId),
+        firestoreService.getOvertimeRequests(userId)
       ]);
       
       setAttendanceRecords(attendanceData);
       setLeaveRequests(leaveData);
+      setOvertimeRequests(overtimeData);
     } catch (error) {
       console.error('載入用戶數據失敗:', error);
       message.error('載入用戶數據失敗');
@@ -167,11 +171,17 @@ const CalendarPage = () => {
       return recordDate.format('YYYY-MM-DD') === dateStr;
     });
 
-    // 獲取該日期的請假記錄 - 顯示所有狀態的請假
+    // 獲取該日期的請假記錄 - 只顯示待審核和已批准的請假申請
     const dayLeaves = leaveRequests.filter(leave => {
       const startDate = dayjs(leave.startDate.toDate ? leave.startDate.toDate() : new Date(leave.startDate));
       const endDate = dayjs(leave.endDate.toDate ? leave.endDate.toDate() : new Date(leave.endDate));
-      return value.isBetween(startDate, endDate, 'day', '[]');
+      return value.isBetween(startDate, endDate, 'day', '[]') && leave.status !== 'rejected';
+    });
+
+    // 獲取該日期的加班記錄 - 只顯示待審核和已批准的加班申請
+    const dayOvertimes = overtimeRequests.filter(overtime => {
+      const overtimeDate = dayjs(overtime.date.toDate ? overtime.date.toDate() : new Date(overtime.date));
+      return overtimeDate.format('YYYY-MM-DD') === dateStr && overtime.status !== 'rejected';
     });
 
     // 添加打卡記錄，按時間排序
@@ -205,6 +215,19 @@ const CalendarPage = () => {
       });
     });
 
+    // 添加加班記錄
+    dayOvertimes.forEach(overtime => {
+      listData.push({
+        type: overtime.status === 'approved' ? 'processing' : 'default',
+        recordType: 'overtime',
+        content: `加班 ${overtime.hours}h`,
+        color: '#722ed1',
+        status: overtime.status,
+        startTime: overtime.startTime,
+        endTime: overtime.endTime
+      });
+    });
+
     return listData || [];
   };
 
@@ -215,7 +238,8 @@ const CalendarPage = () => {
     const groupedData = {
       clockIn: [],
       clockOut: [],
-      leaves: []
+      leaves: [],
+      overtimes: []
     };
     
     listData.forEach(item => {
@@ -225,6 +249,8 @@ const CalendarPage = () => {
         groupedData.clockOut.push(item);
       } else if (item.recordType === 'leave') {
         groupedData.leaves.push(item);
+      } else if (item.recordType === 'overtime') {
+        groupedData.overtimes.push(item);
       }
     });
 
@@ -263,7 +289,7 @@ const CalendarPage = () => {
         )}
         
         {/* 請假記錄 */}
-        {groupedData.leaves.slice(0, 2).map((item, index) => (
+        {groupedData.leaves.slice(0, 1).map((item, index) => (
           <div key={index} style={{ marginBottom: '3px' }}>
             <span style={{ 
               color: item.color,
@@ -283,10 +309,31 @@ const CalendarPage = () => {
           </div>
         ))}
         
-        {/* 如果有更多請假記錄，顯示省略號 */}
-        {groupedData.leaves.length > 2 && (
+        {/* 加班記錄 */}
+        {groupedData.overtimes.slice(0, 1).map((item, index) => (
+          <div key={index} style={{ marginBottom: '3px' }}>
+            <span style={{ 
+              color: item.color,
+              fontSize: '12px',
+              backgroundColor: `${item.color}15`,
+              padding: '3px 6px',
+              borderRadius: '4px',
+              display: 'inline-block',
+              maxWidth: '100%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontWeight: '600'
+            }}>
+              {item.content}
+            </span>
+          </div>
+        ))}
+        
+        {/* 如果有更多記錄，顯示省略號 */}
+        {(groupedData.leaves.length + groupedData.overtimes.length > 2) && (
           <div style={{ fontSize: '11px', color: '#999', fontWeight: '500' }}>
-            +{groupedData.leaves.length - 2}...
+            +{groupedData.leaves.length + groupedData.overtimes.length - 2}...
           </div>
         )}
       </div>
@@ -307,12 +354,18 @@ const CalendarPage = () => {
     const dayLeaves = leaveRequests.filter(leave => {
       const startDate = dayjs(leave.startDate.toDate ? leave.startDate.toDate() : new Date(leave.startDate));
       const endDate = dayjs(leave.endDate.toDate ? leave.endDate.toDate() : new Date(leave.endDate));
-      return value.isBetween(startDate, endDate, 'day', '[]');
+      return value.isBetween(startDate, endDate, 'day', '[]') && leave.status !== 'rejected';
+    });
+
+    const dayOvertimes = overtimeRequests.filter(overtime => {
+      const overtimeDate = dayjs(overtime.date.toDate ? overtime.date.toDate() : new Date(overtime.date));
+      return overtimeDate.format('YYYY-MM-DD') === dateStr && overtime.status !== 'rejected';
     });
 
     setSelectedDateRecords({
       attendance: dayAttendance,
-      leaves: dayLeaves
+      leaves: dayLeaves,
+      overtimes: dayOvertimes
     });
     
     setDrawerVisible(true);
@@ -332,8 +385,8 @@ const CalendarPage = () => {
   };
 
   const renderDrawerContent = () => {
-    const { attendance, leaves } = selectedDateRecords;
-    const hasData = attendance.length > 0 || leaves.length > 0;
+    const { attendance, leaves, overtimes } = selectedDateRecords;
+    const hasData = attendance.length > 0 || leaves.length > 0 || overtimes.length > 0;
 
     if (!hasData) {
       return (
@@ -379,7 +432,7 @@ const CalendarPage = () => {
 
         {/* 請假記錄 */}
         {leaves.length > 0 && (
-          <div>
+          <div style={{ marginBottom: '24px' }}>
             <Title level={5}>
               <FileTextOutlined /> 請假記錄
             </Title>
@@ -413,6 +466,51 @@ const CalendarPage = () => {
                         </Text>
                         {leave.reason && (
                           <Text type="secondary">原因：{leave.reason}</Text>
+                        )}
+                      </Space>
+                    </div>
+                  </List.Item>
+                );
+              }}
+            />
+          </div>
+        )}
+
+        {/* 加班記錄 */}
+        {overtimes.length > 0 && (
+          <div>
+            <Title level={5}>
+              <ClockCircleOutlined /> 加班記錄
+            </Title>
+            <List
+              dataSource={overtimes}
+              renderItem={(overtime) => {
+                const overtimeDate = dayjs(overtime.date.toDate ? overtime.date.toDate() : new Date(overtime.date));
+                
+                return (
+                  <List.Item>
+                    <div style={{ width: '100%' }}>
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Space>
+                          <Tag color="#722ed1">
+                            加班 {overtime.hours}小時
+                          </Tag>
+                          <Tag color={
+                            overtime.status === 'approved' ? 'green' : 
+                            overtime.status === 'rejected' ? 'red' : 'blue'
+                          }>
+                            {overtime.status === 'approved' ? '已批准' : 
+                             overtime.status === 'rejected' ? '已拒絕' : '待審核'}
+                          </Tag>
+                          {(isAdmin || isManager) && (
+                            <Text type="secondary">({getUserName(overtime.userId)})</Text>
+                          )}
+                        </Space>
+                        <Text type="secondary">
+                          時間：{overtime.startTime} - {overtime.endTime}
+                        </Text>
+                        {overtime.reason && (
+                          <Text type="secondary">原因：{overtime.reason}</Text>
                         )}
                       </Space>
                     </div>
