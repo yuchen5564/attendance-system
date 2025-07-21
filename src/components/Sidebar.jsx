@@ -40,6 +40,12 @@ const Sidebar = ({ currentPage, setCurrentPage, collapsed }) => {
       roles: ['admin', 'manager', 'employee']
     },
     {
+      key: 'overtime-requests',
+      icon: <ClockCircleOutlined />,
+      label: '加班管理',
+      roles: ['admin', 'manager', 'employee']
+    },
+    {
       key: 'employees',
       icon: <TeamOutlined />,
       label: '員工管理',
