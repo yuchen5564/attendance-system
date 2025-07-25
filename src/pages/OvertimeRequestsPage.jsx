@@ -23,6 +23,7 @@ import {
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../firebase/firestoreService';
+import { emailService } from '../firebase/emailService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import OvertimeRequestModal from '../components/OvertimeRequestModal';
 import dayjs from 'dayjs';
@@ -130,12 +131,33 @@ const OvertimeRequestsPage = () => {
 
   const handleSubmitRequest = async (requestData) => {
     try {
-      await firestoreService.submitOvertimeRequest({
+      // 提交加班申請
+      const requestId = await firestoreService.submitOvertimeRequest({
         ...requestData,
         userId: userData.uid,
         userName: userData.name,
         userDepartment: userData.department
       });
+
+      // 如果用戶有設定主管，發送郵件通知
+      if (userData.managerId) {
+        try {
+          const manager = await firestoreService.getUserById(userData.managerId);
+          if (manager && manager.email) {
+            await emailService.sendOvertimeRequestNotification(
+              { ...requestData, id: requestId },
+              manager.email,
+              manager.name,
+              userData.name
+            );
+            console.log('已發送加班申請通知郵件給主管');
+          }
+        } catch (emailError) {
+          console.warn('發送郵件通知失敗:', emailError);
+          // 郵件發送失敗不影響加班申請本身
+        }
+      }
+
       message.success('加班申請已提交');
       setShowModal(false);
       loadData();

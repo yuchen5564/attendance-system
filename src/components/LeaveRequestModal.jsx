@@ -45,6 +45,7 @@ const LeaveRequestModal = ({ onClose, onSubmit }) => {
       // 只顯示啟用的假別
       const activeTypes = types.filter(leaveType => leaveType.isActive);
       setLeaveTypes(activeTypes);
+      console.log('載入的假別:', activeTypes);
     } catch (error) {
       console.error('載入請假假別失敗:', error);
       message.error('載入請假假別失敗');
