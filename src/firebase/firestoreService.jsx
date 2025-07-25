@@ -298,8 +298,16 @@ export const firestoreService = {
 
   async updateUser(userId, userData) {
     try {
+      // 過濾掉 undefined 值，避免 Firestore 錯誤
+      const cleanData = {};
+      Object.keys(userData).forEach(key => {
+        if (userData[key] !== undefined) {
+          cleanData[key] = userData[key];
+        }
+      });
+      
       await updateDoc(doc(db, 'users', userId), {
-        ...userData,
+        ...cleanData,
         updatedAt: serverTimestamp()
       });
     } catch (error) {

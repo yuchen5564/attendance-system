@@ -101,9 +101,17 @@ export const authService = {
       // 如果需要重設密碼，建議使用 Firebase 的密碼重設功能
       const { uid, password, ...updateData } = userData;
       
+      // 過濾掉 undefined 值，避免 Firestore 錯誤
+      const cleanData = {};
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] !== undefined) {
+          cleanData[key] = updateData[key];
+        }
+      });
+      
       // 只更新 Firestore 中的用戶資料
       await updateDoc(doc(db, 'users', uid), {
-        ...updateData,
+        ...cleanData,
         updatedAt: new Date()
       });
 

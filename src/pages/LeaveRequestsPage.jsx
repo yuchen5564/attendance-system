@@ -158,7 +158,13 @@ const LeaveRequestsPage = () => {
       });
 
       // 如果用戶有設定主管，發送郵件通知
-      if (userData.managerId) {
+      const hasValidManager = userData.managerId && 
+                              userData.managerId !== null && 
+                              userData.managerId !== '' && 
+                              typeof userData.managerId === 'string' && 
+                              userData.managerId.trim() !== '';
+      
+      if (hasValidManager) {
         try {
           const manager = await firestoreService.getUserById(userData.managerId);
           if (manager && manager.email) {

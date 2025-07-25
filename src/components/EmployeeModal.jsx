@@ -123,6 +123,11 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
         delete submitData.password;
       }
 
+      // 處理空值的 managerId，如果為空字串則設為 null
+      if (!submitData.managerId || submitData.managerId.trim() === '') {
+        submitData.managerId = null;
+      }
+
       await onSubmit(submitData);
       onClose();
     } catch (error) {
