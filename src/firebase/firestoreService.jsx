@@ -180,6 +180,88 @@ export const firestoreService = {
     }
   },
 
+  // 加班申請相關
+  async submitOvertimeRequest(overtimeData) {
+    try {
+      const docRef = await addDoc(collection(db, 'overtimeRequests'), {
+        ...overtimeData,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('提交加班申請錯誤:', error);
+      throw error;
+    }
+  },
+
+  async getOvertimeRequests(userId = null, status = null) {
+    try {
+      let q = collection(db, 'overtimeRequests');
+      const constraints = [];
+      
+      if (userId) {
+        constraints.push(where('userId', '==', userId));
+      }
+      
+      if (status) {
+        constraints.push(where('status', '==', status));
+      }
+      
+      constraints.push(orderBy('createdAt', 'desc'));
+      
+      if (constraints.length > 0) {
+        q = query(q, ...constraints);
+      }
+
+      const querySnapshot = await getDocs(q);
+      const requests = [];
+      querySnapshot.forEach((doc) => {
+        requests.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      console.log('載入加班申請數量:', requests.length);
+      return requests;
+    } catch (error) {
+      console.error('獲取加班申請錯誤:', error);
+      throw error;
+    }
+  },
+
+  async approveOvertimeRequest(requestId, approverId, comments = '') {
+    try {
+      await updateDoc(doc(db, 'overtimeRequests', requestId), {
+        status: 'approved',
+        approverId,
+        approvedAt: serverTimestamp(),
+        comments,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('批准加班申請錯誤:', error);
+      throw error;
+    }
+  },
+
+  async rejectOvertimeRequest(requestId, approverId, comments = '') {
+    try {
+      await updateDoc(doc(db, 'overtimeRequests', requestId), {
+        status: 'rejected',
+        approverId,
+        rejectedAt: serverTimestamp(),
+        comments,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('拒絕加班申請錯誤:', error);
+      throw error;
+    }
+  },
+
   // 用戶管理
   async getAllUsers() {
     try {
@@ -216,12 +298,48 @@ export const firestoreService = {
 
   async updateUser(userId, userData) {
     try {
+      // 過濾掉 undefined 值，避免 Firestore 錯誤
+      const cleanData = {};
+      Object.keys(userData).forEach(key => {
+        if (userData[key] !== undefined) {
+          cleanData[key] = userData[key];
+        }
+      });
+      
       await updateDoc(doc(db, 'users', userId), {
-        ...userData,
+        ...cleanData,
         updatedAt: serverTimestamp()
       });
     } catch (error) {
       console.error('更新用戶資料錯誤:', error);
+      throw error;
+    }
+  },
+
+  // 獲取部門主管列表
+  async getManagers() {
+    try {
+      const q = query(
+        collection(db, 'users'),
+        where('role', '==', 'manager'),
+        where('isActive', '!=', false),
+        orderBy('name')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const managers = [];
+      querySnapshot.forEach((doc) => {
+        managers.push({
+          id: doc.id,
+          uid: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      console.log('載入部門主管數量:', managers.length);
+      return managers;
+    } catch (error) {
+      console.error('獲取部門主管列表錯誤:', error);
       throw error;
     }
   },

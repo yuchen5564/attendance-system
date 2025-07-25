@@ -26,7 +26,16 @@ export const authService = {
       // 獲取用戶詳細資料
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
-        return { user, userData: userDoc.data() };
+        const userData = userDoc.data();
+        
+        // 檢查用戶狀態是否為啟用
+        if (userData.isActive === false) {
+          // 如果用戶被停用，立即登出並拋出錯誤
+          await signOut(auth);
+          throw new Error('帳號已被管理員停用');
+        }
+        
+        return { user, userData };
       } else {
         throw new Error('用戶資料不存在');
       }
@@ -65,6 +74,7 @@ export const authService = {
         department: userData.department,
         position: userData.position,
         role: userData.role || 'employee',
+        managerId: userData.managerId || null,
         workingHours: userData.workingHours || {
           start: '09:00',
           end: '18:00'
@@ -91,9 +101,17 @@ export const authService = {
       // 如果需要重設密碼，建議使用 Firebase 的密碼重設功能
       const { uid, password, ...updateData } = userData;
       
+      // 過濾掉 undefined 值，避免 Firestore 錯誤
+      const cleanData = {};
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] !== undefined) {
+          cleanData[key] = updateData[key];
+        }
+      });
+      
       // 只更新 Firestore 中的用戶資料
       await updateDoc(doc(db, 'users', uid), {
-        ...updateData,
+        ...cleanData,
         updatedAt: new Date()
       });
 

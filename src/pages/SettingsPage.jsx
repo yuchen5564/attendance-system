@@ -17,7 +17,8 @@ import {
   ReloadOutlined, 
   LockOutlined, 
   TeamOutlined,
-  CalendarOutlined
+  CalendarOutlined,
+  MailOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { systemService } from '../firebase/systemService';
@@ -28,6 +29,7 @@ import DepartmentManagement from '../components/settings/DepartmentManagement';
 import DepartmentModal from '../components/settings/DepartmentModal';
 import LeaveTypeManagement from '../components/settings/LeaveTypeManagement';
 import LeaveTypeModal from '../components/settings/LeaveTypeModal';
+import EmailSettings from '../components/settings/EmailSettings';
 import { createDepartmentColumns } from '../utils/departmentTableConfig';
 import { createLeaveTypeColumns } from '../utils/leaveTypeTableConfig';
 import dayjs from 'dayjs';
@@ -432,6 +434,16 @@ const SettingsPage = () => {
                 leaveTypeColumns={leaveTypeColumns}
               />
             )
+          },
+          {
+            key: 'email',
+            label: (
+              <Space>
+                <MailOutlined />
+                郵件設定
+              </Space>
+            ),
+            children: <EmailSettings />
           }
         ]}
       />

@@ -15,10 +15,9 @@ import {
 } from 'antd';
 import { 
   PlusOutlined, 
-  CalendarOutlined, 
+  ClockCircleOutlined, 
   CheckOutlined, 
   CloseOutlined, 
-  EyeOutlined,
   ExclamationCircleOutlined,
   ReloadOutlined
 } from '@ant-design/icons';
@@ -26,20 +25,19 @@ import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../firebase/firestoreService';
 import { emailService } from '../firebase/emailService';
 import LoadingSpinner from '../components/LoadingSpinner';
-import LeaveRequestModal from '../components/LeaveRequestModal';
+import OvertimeRequestModal from '../components/OvertimeRequestModal';
 import dayjs from 'dayjs';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
-const LeaveRequestsPage = () => {
-  const { userData, isAdmin, isManager, getLeaveTypes } = useAuth();
+const OvertimeRequestsPage = () => {
+  const { userData, isAdmin, isManager } = useAuth();
   const { message, modal } = App.useApp();
   const [loading, setLoading] = useState(true);
-  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [overtimeRequests, setOvertimeRequests] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
   const [users, setUsers] = useState([]);
-  const [leaveTypes, setLeaveTypes] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState('all');
 
@@ -52,30 +50,14 @@ const LeaveRequestsPage = () => {
 
   useEffect(() => {
     loadData();
-    loadLeaveTypes();
   }, [userData]);
 
   useEffect(() => {
     const filtered = filter === 'all' 
-      ? leaveRequests 
-      : leaveRequests.filter(request => request.status === filter);
+      ? overtimeRequests 
+      : overtimeRequests.filter(request => request.status === filter);
     setFilteredRequests(filtered);
-  }, [leaveRequests, filter]);
-
-  const loadLeaveTypes = async () => {
-    try {
-      const types = await getLeaveTypes();
-      setLeaveTypes(types || []);
-    } catch (error) {
-      console.error('載入請假假別失敗:', error);
-      // 設定預設假別作為備案
-      setLeaveTypes([
-        { id: 'annual', name: '特休', color: '#52c41a' },
-        { id: 'sick', name: '病假', color: '#fa8c16' },
-        { id: 'personal', name: '事假', color: '#1890ff' }
-      ]);
-    }
-  };
+  }, [overtimeRequests, filter]);
 
   const loadData = async () => {
     if (!userData) return;
@@ -84,21 +66,21 @@ const LeaveRequestsPage = () => {
       setLoading(true);
 
       if (isAdmin || isManager) {
-        // 管理員和主管可以看到所有請假申請
+        // 管理員和主管可以看到所有加班申請
         const [allRequests, allUsers] = await Promise.all([
-          firestoreService.getLeaveRequests(),
+          firestoreService.getOvertimeRequests(),
           firestoreService.getAllUsers()
         ]);
-        setLeaveRequests(allRequests);
+        setOvertimeRequests(allRequests);
         setUsers(allUsers);
       } else {
-        // 一般員工只能看到自己的請假申請
-        const userRequests = await firestoreService.getLeaveRequests(userData.uid);
-        setLeaveRequests(userRequests);
+        // 一般員工只能看到自己的加班申請
+        const userRequests = await firestoreService.getOvertimeRequests(userData.uid);
+        setOvertimeRequests(userRequests);
         setUsers([userData]);
       }
     } catch (error) {
-      console.error('載入請假申請失敗:', error);
+      console.error('載入加班申請失敗:', error);
       message.error('載入數據失敗');
     } finally {
       setLoading(false);
@@ -107,18 +89,18 @@ const LeaveRequestsPage = () => {
 
   const handleApprove = async (requestId) => {
     try {
-      await firestoreService.approveLeaveRequest(requestId, userData.uid);
-      message.success('請假申請已批准');
+      await firestoreService.approveOvertimeRequest(requestId, userData.uid);
+      message.success('加班申請已批准');
       loadData();
     } catch (error) {
-      console.error('批准請假申請失敗:', error);
+      console.error('批准加班申請失敗:', error);
       message.error('操作失敗');
     }
   };
 
   const handleReject = (requestId) => {
     modal.confirm({
-      title: '拒絕請假申請',
+      title: '拒絕加班申請',
       icon: <ExclamationCircleOutlined />,
       content: (
         <div>
@@ -136,11 +118,11 @@ const LeaveRequestsPage = () => {
       onOk: async () => {
         try {
           const reason = document.getElementById('reject-reason')?.value || '';
-          await firestoreService.rejectLeaveRequest(requestId, userData.uid, reason);
-          message.success('請假申請已拒絕');
+          await firestoreService.rejectOvertimeRequest(requestId, userData.uid, reason);
+          message.success('加班申請已拒絕');
           loadData();
         } catch (error) {
-          console.error('拒絕請假申請失敗:', error);
+          console.error('拒絕加班申請失敗:', error);
           message.error('操作失敗');
         }
       },
@@ -149,8 +131,8 @@ const LeaveRequestsPage = () => {
 
   const handleSubmitRequest = async (requestData) => {
     try {
-      // 提交請假申請
-      const requestId = await firestoreService.submitLeaveRequest({
+      // 提交加班申請
+      const requestId = await firestoreService.submitOvertimeRequest({
         ...requestData,
         userId: userData.uid,
         userName: userData.name,
@@ -158,6 +140,7 @@ const LeaveRequestsPage = () => {
       });
 
       // 如果用戶有設定主管，發送郵件通知
+      // 檢查是否有有效的主管 ID
       const hasValidManager = userData.managerId && 
                               userData.managerId !== null && 
                               userData.managerId !== '' && 
@@ -168,25 +151,25 @@ const LeaveRequestsPage = () => {
         try {
           const manager = await firestoreService.getUserById(userData.managerId);
           if (manager && manager.email) {
-            await emailService.sendLeaveRequestNotification(
+            await emailService.sendOvertimeRequestNotification(
               { ...requestData, id: requestId },
               manager.email,
               manager.name,
               userData.name
             );
-            console.log('已發送請假申請通知郵件給主管');
+            console.log('已發送加班申請通知郵件給主管');
           }
         } catch (emailError) {
           console.warn('發送郵件通知失敗:', emailError);
-          // 郵件發送失敗不影響請假申請本身
+          // 郵件發送失敗不影響加班申請本身
         }
       }
 
-      message.success('請假申請已提交');
+      message.success('加班申請已提交');
       setShowModal(false);
       loadData();
     } catch (error) {
-      console.error('提交請假申請失敗:', error);
+      console.error('提交加班申請失敗:', error);
       message.error('提交失敗');
     }
   };
@@ -202,6 +185,12 @@ const LeaveRequestsPage = () => {
     return dayjs(date).format('YYYY-MM-DD');
   };
 
+  const formatDateTime = (timestamp) => {
+    if (!timestamp) return '';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return dayjs(date).format('YYYY-MM-DD HH:mm');
+  };
+
   const getStatusConfig = (status) => {
     switch (status) {
       case 'pending':
@@ -215,50 +204,25 @@ const LeaveRequestsPage = () => {
     }
   };
 
-  const getLeaveTypeInfo = (typeId) => {
-    // 先嘗試從系統設定的假別中找
-    const systemType = leaveTypes.find(type => type.id === typeId);
-    if (systemType) {
-      return {
-        name: systemType.name,
-        color: systemType.color || '#1890ff'
-      };
-    }
-
-    // 備案：舊的靜態假別對應
-    const legacyTypes = {
-      annual: { name: '特休', color: '#52c41a' },
-      sick: { name: '病假', color: '#fa8c16' },
-      personal: { name: '事假', color: '#1890ff' },
-      maternity: { name: '產假', color: '#722ed1' },
-      paternity: { name: '陪產假', color: '#13c2c2' },
-      funeral: { name: '喪假', color: '#595959' },
-      marriage: { name: '婚假', color: '#eb2f96' },
-      other: { name: '其他', color: '#fadb14' }
-    };
-    
-    return legacyTypes[typeId] || { name: typeId, color: '#1890ff' };
-  };
-
   if (loading) {
-    return <LoadingSpinner text="載入請假申請中..." />;
+    return <LoadingSpinner text="載入加班申請中..." />;
   }
 
   const getFilterCount = (filterValue) => {
-    if (filterValue === 'all') return leaveRequests.length;
-    return leaveRequests.filter(r => r.status === filterValue).length;
+    if (filterValue === 'all') return overtimeRequests.length;
+    return overtimeRequests.filter(r => r.status === filterValue).length;
   };
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <Title level={2} style={{ margin: 0 }}>請假管理</Title>
+        <Title level={2} style={{ margin: 0 }}>加班管理</Title>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={() => setShowModal(true)}
         >
-          新增請假申請
+          新增加班申請
         </Button>
       </div>
 
@@ -275,12 +239,12 @@ const LeaveRequestsPage = () => {
         />
       </Card>
 
-      {/* 請假申請列表 */}
+      {/* 加班申請列表 */}
       <Card 
         title={
           <Space>
-            <CalendarOutlined />
-            請假申請 ({filteredRequests.length} 筆)
+            <ClockCircleOutlined />
+            加班申請 ({filteredRequests.length} 筆)
           </Space>
         }
         extra={
@@ -294,8 +258,8 @@ const LeaveRequestsPage = () => {
       >
         {filteredRequests.length === 0 ? (
           <Empty 
-            image={<CalendarOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />}
-            description="沒有找到符合條件的請假申請"
+            image={<ClockCircleOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />}
+            description="沒有找到符合條件的加班申請"
           />
         ) : (
           <List
@@ -311,7 +275,6 @@ const LeaveRequestsPage = () => {
             dataSource={filteredRequests}
             renderItem={(request) => {
               const statusConfig = getStatusConfig(request.status);
-              const leaveTypeInfo = getLeaveTypeInfo(request.type);
               
               return (
                 <List.Item
@@ -330,7 +293,7 @@ const LeaveRequestsPage = () => {
                     ...(isAdmin || isManager) && request.status === 'pending' ? [
                       <Popconfirm
                         key="approve"
-                        title="確定批准此請假申請嗎？"
+                        title="確定批准此加班申請嗎？"
                         onConfirm={() => handleApprove(request.id)}
                         okText="確定"
                         cancelText="取消"
@@ -363,14 +326,14 @@ const LeaveRequestsPage = () => {
                             <Text strong>{getUserName(request.userId)}</Text>
                           )}
                           <Tag 
-                            color={leaveTypeInfo.color}
+                            color="#1890ff"
                             style={{ 
                               borderRadius: '12px',
                               fontSize: '12px',
                               fontWeight: 'bold'
                             }}
                           >
-                            {request.typeName || leaveTypeInfo.name}
+                            加班申請
                           </Tag>
                         </Space>
                         <Tag color={statusConfig.color}>{statusConfig.text}</Tag>
@@ -379,15 +342,18 @@ const LeaveRequestsPage = () => {
                     description={
                       <Space direction="vertical" style={{ width: '100%' }}>
                         <Text>
-                          <CalendarOutlined style={{ marginRight: '8px' }} />
-                          {formatDate(request.startDate)} ~ {formatDate(request.endDate)}
+                          <ClockCircleOutlined style={{ marginRight: '8px' }} />
+                          日期：{formatDate(request.date)}
+                        </Text>
+                        <Text>
+                          時間：{request.startTime} ~ {request.endTime}
                           <Text type="secondary" style={{ marginLeft: '8px' }}>
-                            ({request.days} 天)
+                            ({request.hours} 小時)
                           </Text>
                         </Text>
                         
                         <div>
-                          <Text strong>請假原因：</Text>
+                          <Text strong>加班原因：</Text>
                           <Paragraph 
                             ellipsis={{ rows: 2, expandable: true, symbol: '展開' }}
                             style={{ marginBottom: 0 }}
@@ -395,18 +361,6 @@ const LeaveRequestsPage = () => {
                             {request.reason}
                           </Paragraph>
                         </div>
-
-                        {/* 顯示是否需要審核 */}
-                        {request.requireApproval !== undefined && (
-                          <div>
-                            <Tag 
-                              color={request.requireApproval ? 'orange' : 'green'} 
-                              size="small"
-                            >
-                              {request.requireApproval ? '需要審核' : '免審核'}
-                            </Tag>
-                          </div>
-                        )}
 
                         {request.comments && (
                           <div style={{ 
@@ -423,7 +377,7 @@ const LeaveRequestsPage = () => {
                         )}
 
                         <Text type="secondary" style={{ fontSize: '12px' }}>
-                          申請時間：{formatDate(request.createdAt)}
+                          申請時間：{formatDateTime(request.createdAt)}
                         </Text>
                       </Space>
                     }
@@ -435,9 +389,9 @@ const LeaveRequestsPage = () => {
         )}
       </Card>
 
-      {/* 請假申請彈窗 */}
+      {/* 加班申請彈窗 */}
       {showModal && (
-        <LeaveRequestModal
+        <OvertimeRequestModal
           onClose={() => setShowModal(false)}
           onSubmit={handleSubmitRequest}
         />
@@ -446,4 +400,4 @@ const LeaveRequestsPage = () => {
   );
 };
 
-export default LeaveRequestsPage;
+export default OvertimeRequestsPage;

@@ -14,6 +14,7 @@ import DashboardPage from './pages/DashboardPage';
 import AttendancePage from './pages/AttendancePage';
 import CalendarPage from './pages/CalendarPage';
 import LeaveRequestsPage from './pages/LeaveRequestsPage';
+import OvertimeRequestsPage from './pages/OvertimeRequestsPage';
 import EmployeesPage from './pages/EmployeesPage';
 import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
@@ -57,6 +58,8 @@ const MainLayout = ({ currentPage, setCurrentPage }) => {
         return <CalendarPage />;
       case 'leave-requests':
         return <LeaveRequestsPage />;
+      case 'overtime-requests':
+        return <OvertimeRequestsPage />;
       case 'employees':
         return <EmployeesPage />;
       case 'reports':
