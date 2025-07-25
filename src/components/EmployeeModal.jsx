@@ -21,6 +21,7 @@ import {
   TeamOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
+import { firestoreService } from '../firebase/firestoreService';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
@@ -30,7 +31,9 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [departmentsLoading, setDepartmentsLoading] = useState(false);
+  const [managersLoading, setManagersLoading] = useState(false);
   const [departments, setDepartments] = useState([]);
+  const [managers, setManagers] = useState([]);
   const { message } = App.useApp();
 
   const roles = [
@@ -41,6 +44,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
 
   useEffect(() => {
     loadDepartments();
+    loadManagers();
   }, []);
 
   useEffect(() => {
@@ -55,12 +59,14 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
           dayjs(employee.workingHours.start, 'HH:mm'),
           dayjs(employee.workingHours.end, 'HH:mm')
         ] : [dayjs('09:00', 'HH:mm'), dayjs('18:00', 'HH:mm')],
+        managerId: employee.managerId || '',
         isActive: employee.isActive !== false
       });
     } else {
       form.setFieldsValue({
         role: 'employee',
         workingHours: [dayjs('09:00', 'HH:mm'), dayjs('18:00', 'HH:mm')],
+        managerId: '',
         isActive: true
       });
     }
@@ -80,6 +86,20 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
       ]);
     } finally {
       setDepartmentsLoading(false);
+    }
+  };
+
+  const loadManagers = async () => {
+    try {
+      setManagersLoading(true);
+      const managerList = await firestoreService.getManagers();
+      setManagers(managerList || []);
+    } catch (error) {
+      console.error('載入主管列表失敗:', error);
+      message.error('載入主管列表失敗');
+      setManagers([]);
+    } finally {
+      setManagersLoading(false);
     }
   };
 
@@ -249,22 +269,54 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
           </Form.Item>
         </div>
 
-        <Form.Item
-          name="role"
-          label="角色權限"
-          rules={[{ required: true, message: '請選擇角色權限' }]}
-        >
-          <Select placeholder="請選擇角色權限">
-            {roles.map(role => (
-              <Option key={role.value} value={role.value}>
-                <Space>
-                  <UserOutlined />
-                  {role.label}
-                </Space>
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <Form.Item
+            name="role"
+            label="角色權限"
+            rules={[{ required: true, message: '請選擇角色權限' }]}
+          >
+            <Select placeholder="請選擇角色權限">
+              {roles.map(role => (
+                <Option key={role.value} value={role.value}>
+                  <Space>
+                    <UserOutlined />
+                    {role.label}
+                  </Space>
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="managerId"
+            label="直屬主管"
+          >
+            <Select
+              placeholder="請選擇直屬主管"
+              allowClear
+              loading={managersLoading}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+              notFoundContent={managersLoading ? <Spin size="small" /> : '無可用主管'}
+            >
+              {managers
+                .filter(manager => manager.uid !== employee?.uid)
+                .map(manager => (
+                  <Option key={manager.uid} value={manager.uid} label={manager.name}>
+                    <Space>
+                      <TeamOutlined />
+                      {manager.name}
+                      <span style={{ color: '#666', fontSize: '12px' }}>
+                        ({manager.department})
+                      </span>
+                    </Space>
+                  </Option>
+                ))}
+            </Select>
+          </Form.Item>
+        </div>
 
         <Form.Item
           name="workingHours"

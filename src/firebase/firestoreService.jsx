@@ -308,6 +308,34 @@ export const firestoreService = {
     }
   },
 
+  // 獲取部門主管列表
+  async getManagers() {
+    try {
+      const q = query(
+        collection(db, 'users'),
+        where('role', '==', 'manager'),
+        where('isActive', '!=', false),
+        orderBy('name')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const managers = [];
+      querySnapshot.forEach((doc) => {
+        managers.push({
+          id: doc.id,
+          uid: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      console.log('載入部門主管數量:', managers.length);
+      return managers;
+    } catch (error) {
+      console.error('獲取部門主管列表錯誤:', error);
+      throw error;
+    }
+  },
+
   // 檢查當天是否已打卡
   async getTodayAttendance(userId) {
     try {
