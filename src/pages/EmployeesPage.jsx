@@ -37,6 +37,7 @@ const EmployeesPage = () => {
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState([]);
   const [filteredEmployees, setFilteredEmployees] = useState([]);
+  const [managers, setManagers] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
@@ -54,6 +55,23 @@ const EmployeesPage = () => {
       setLoading(true);
       const users = await firestoreService.getAllUsers();
       setEmployees(users);
+      
+      // 載入主管資料以便顯示主管姓名
+      const managerData = {};
+      const uniqueManagerIds = [...new Set(users.map(user => user.managerId).filter(Boolean))];
+      
+      for (const managerId of uniqueManagerIds) {
+        try {
+          const manager = await firestoreService.getUserById(managerId);
+          if (manager) {
+            managerData[managerId] = manager;
+          }
+        } catch (error) {
+          console.warn(`無法載入主管資料 ${managerId}:`, error);
+        }
+      }
+      
+      setManagers(managerData);
     } catch (error) {
       console.error('載入員工列表失敗:', error);
       message.error('載入數據失敗');
@@ -68,12 +86,14 @@ const EmployeesPage = () => {
       return;
     }
 
-    const filtered = employees.filter(employee => 
-      employee.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.position?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filtered = employees.filter(employee => {
+      const managerName = employee.managerId ? managers[employee.managerId]?.name || '' : '';
+      return employee.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.position?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        managerName.toLowerCase().includes(searchTerm.toLowerCase());
+    });
     setFilteredEmployees(filtered);
   };
 
@@ -183,6 +203,17 @@ const EmployeesPage = () => {
       render: (role) => {
         const roleInfo = getRoleText(role);
         return <Tag color={roleInfo.color}>{roleInfo.text}</Tag>;
+      },
+    },
+    {
+      title: '直屬主管',
+      dataIndex: 'managerId',
+      key: 'managerId',
+      width: 120,
+      render: (managerId) => {
+        if (!managerId) return '-';
+        const manager = managers[managerId];
+        return manager ? manager.name : '載入中...';
       },
     },
     {
@@ -296,7 +327,7 @@ const EmployeesPage = () => {
       {/* 搜尋框 */}
       <Card style={{ marginBottom: '24px' }}>
         <Search
-          placeholder="搜尋員工姓名、電子郵件、部門或職位..."
+          placeholder="搜尋員工姓名、電子郵件、部門、職位或主管..."
           allowClear
           enterButton={<SearchOutlined />}
           size="large"

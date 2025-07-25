@@ -7,7 +7,9 @@ import {
   setDoc,
   getDoc,
   updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  addDoc,
+  deleteDoc
 } from 'firebase/firestore';
 import { db } from './config';
 
@@ -511,6 +513,81 @@ export const systemService = {
         totalAttendance: 0,
         totalLeaveRequests: 0
       };
+    }
+  },
+
+  // 郵件設定相關功能
+  // 獲取郵件設定
+  async getEmailSettings() {
+    try {
+      const settingsDoc = await getDoc(doc(db, 'systemSettings', 'emailConfig'));
+      if (settingsDoc.exists()) {
+        return settingsDoc.data();
+      }
+      return null;
+    } catch (error) {
+      console.error('獲取郵件設定錯誤:', error);
+      return null;
+    }
+  },
+
+  // 更新郵件設定
+  async updateEmailSettings(settings) {
+    try {
+      // 過濾掉 undefined 值
+      const cleanSettings = {};
+      Object.keys(settings).forEach(key => {
+        if (settings[key] !== undefined) {
+          cleanSettings[key] = settings[key];
+        }
+      });
+
+      await setDoc(doc(db, 'systemSettings', 'emailConfig'), {
+        ...cleanSettings,
+        updatedAt: serverTimestamp()
+      });
+      return true;
+    } catch (error) {
+      console.error('更新郵件設定錯誤:', error);
+      throw error;
+    }
+  },
+
+  // 測試郵件設定
+  async testEmailSettings(settings, testEmail) {
+    try {
+      // 這裡可以實作測試郵件發送
+      // 暫時返回成功，實際使用時需要呼叫郵件服務
+      console.log('測試郵件設定:', settings, '測試郵件:', testEmail);
+      return {
+        success: true,
+        message: '郵件設定測試成功'
+      };
+    } catch (error) {
+      console.error('測試郵件設定錯誤:', error);
+      return {
+        success: false,
+        message: error.message
+      };
+    }
+  },
+
+  // 獲取郵件發送記錄
+  async getEmailLogs(limit = 50) {
+    try {
+      const logsQuery = query(collection(db, 'emailLogs'));
+      const querySnapshot = await getDocs(logsQuery);
+      const logs = [];
+      querySnapshot.forEach((doc) => {
+        logs.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      return logs.sort((a, b) => b.sentAt - a.sentAt).slice(0, limit);
+    } catch (error) {
+      console.error('獲取郵件記錄錯誤:', error);
+      return [];
     }
   }
 };

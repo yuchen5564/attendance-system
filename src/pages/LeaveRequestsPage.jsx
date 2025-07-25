@@ -24,6 +24,7 @@ import {
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../firebase/firestoreService';
+import { emailService } from '../firebase/emailService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import LeaveRequestModal from '../components/LeaveRequestModal';
 import dayjs from 'dayjs';
@@ -148,12 +149,33 @@ const LeaveRequestsPage = () => {
 
   const handleSubmitRequest = async (requestData) => {
     try {
-      await firestoreService.submitLeaveRequest({
+      // 提交請假申請
+      const requestId = await firestoreService.submitLeaveRequest({
         ...requestData,
         userId: userData.uid,
         userName: userData.name,
         userDepartment: userData.department
       });
+
+      // 如果用戶有設定主管，發送郵件通知
+      if (userData.managerId) {
+        try {
+          const manager = await firestoreService.getUserById(userData.managerId);
+          if (manager && manager.email) {
+            await emailService.sendLeaveRequestNotification(
+              { ...requestData, id: requestId },
+              manager.email,
+              manager.name,
+              userData.name
+            );
+            console.log('已發送請假申請通知郵件給主管');
+          }
+        } catch (emailError) {
+          console.warn('發送郵件通知失敗:', emailError);
+          // 郵件發送失敗不影響請假申請本身
+        }
+      }
+
       message.success('請假申請已提交');
       setShowModal(false);
       loadData();
