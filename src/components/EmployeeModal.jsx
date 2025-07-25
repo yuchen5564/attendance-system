@@ -317,33 +317,33 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
             </Select>
           </Form.Item>
         </div>
-
-        <Form.Item
-          name="workingHours"
-          label="工作時間"
-          rules={[{ required: true, message: '請設定工作時間' }]}
-        >
-          <TimePicker.RangePicker
-            format="HH:mm"
-            placeholder={['上班時間', '下班時間']}
-            style={{ width: '100%' }}
-          />
-        </Form.Item>
-
-        {/* 如果需要啟用/停用功能，可以取消註解 */}
-        {/* {employee && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <Form.Item
-            name="isActive"
-            label="啟用狀態"
-            valuePropName="checked"
+            name="workingHours"
+            label="工作時間"
+            rules={[{ required: true, message: '請設定工作時間' }]}
           >
-            <Switch 
-              checkedChildren="啟用" 
-              unCheckedChildren="停用" 
+            <TimePicker.RangePicker
+              format="HH:mm"
+              placeholder={['上班時間', '下班時間']}
+              style={{ width: '100%' }}
             />
           </Form.Item>
-        )} */}
 
+          {/* 如果需要啟用/停用功能，可以取消註解 */}
+          {employee && (
+            <Form.Item
+              name="isActive"
+              label="啟用狀態"
+              valuePropName="checked"
+            >
+              <Switch 
+                checkedChildren="啟用" 
+                unCheckedChildren="停用" 
+              />
+            </Form.Item>
+          )}
+        </div>
         <Form.Item style={{ marginBottom: 0, marginTop: '24px' }}>
           <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
             <Button onClick={onClose}>

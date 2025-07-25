@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { message } from 'antd';
 import { authService } from '../firebase/authService';
 import { firestoreService } from '../firebase/firestoreService';
 import { systemService } from '../firebase/systemService';
@@ -35,6 +36,19 @@ export const AuthProvider = ({ children }) => {
         // 用戶已登入，獲取用戶資料
         try {
           const userDoc = await firestoreService.getUserById(user.uid);
+          
+          // 檢查用戶狀態是否為啟用
+          if (userDoc && userDoc.isActive === false) {
+            // 如果用戶被停用，自動登出
+            console.warn('用戶已被停用，自動登出');
+            message.error('帳號已被管理員停用');
+            await authService.signOut();
+            setUser(null);
+            setUserData(null);
+            setLoading(false);
+            return;
+          }
+          
           setUser(user);
           setUserData(userDoc);
           
