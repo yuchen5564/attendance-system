@@ -40,6 +40,7 @@ const OvertimeRequestsPage = () => {
   const [users, setUsers] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [pageSize, setPageSize] = useState(10);
 
   const filterOptions = [
     { label: '全部', value: 'all' },
@@ -266,11 +267,12 @@ const OvertimeRequestsPage = () => {
             itemLayout="vertical"
             size="large"
             pagination={{
-              pageSize: 8,
+              pageSize: pageSize,
               showSizeChanger: true,
-              showQuickJumper: true,
+              pageSizeOptions: ['5', '10', '20', '50', '100'],
               showTotal: (total, range) =>
                 `第 ${range[0]}-${range[1]} 條，共 ${total} 條記錄`,
+              onShowSizeChange: (current, size) => { setPageSize(size); }
             }}
             dataSource={filteredRequests}
             renderItem={(request) => {

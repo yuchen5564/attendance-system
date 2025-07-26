@@ -43,6 +43,7 @@ const AttendancePage = () => {
     userId: userData?.uid || '',
     type: ''
   });
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     loadData();
@@ -303,11 +304,14 @@ const AttendancePage = () => {
           dataSource={filteredRecords}
           rowKey="id"
           pagination={{
-            pageSize: 20,
+            pageSize: pageSize,
             showSizeChanger: true,
-            showQuickJumper: true,
+            pageSizeOptions: ['5', '10', '20', '50', '100'],
             showTotal: (total, range) =>
               `第 ${range[0]}-${range[1]} 條，共 ${total} 條記錄`,
+            onShowSizeChange: (current, size) => {
+              setPageSize(size);
+            }
           }}
           locale={{
             emptyText: (

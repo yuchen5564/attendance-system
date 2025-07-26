@@ -41,6 +41,8 @@ const EmployeesPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const [pageSize, setPageSize] = useState(10); // 預設每頁10筆
+
 
   useEffect(() => {
     loadEmployees();
@@ -358,11 +360,14 @@ const EmployeesPage = () => {
           dataSource={filteredEmployees}
           rowKey="uid"
           pagination={{
-            pageSize: 10,
+            pageSize: pageSize,
             showSizeChanger: true,
-            showQuickJumper: true,
+            pageSizeOptions: ['5', '10', '20', '50', '100'],
             showTotal: (total, range) =>
               `第 ${range[0]}-${range[1]} 條，共 ${total} 條記錄`,
+            onShowSizeChange: (current, size) => {
+              setPageSize(size);
+            }
           }}
           locale={{
             emptyText: searchTerm ? '沒有找到符合條件的員工' : '暫無員工資料'

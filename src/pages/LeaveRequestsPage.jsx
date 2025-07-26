@@ -42,6 +42,7 @@ const LeaveRequestsPage = () => {
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [pageSize, setPageSize] = useState(10);
 
   const filterOptions = [
     { label: '全部', value: 'all' },
@@ -302,9 +303,12 @@ const LeaveRequestsPage = () => {
             itemLayout="vertical"
             size="large"
             pagination={{
-              pageSize: 8,
+              pageSize: pageSize,
               showSizeChanger: true,
-              showQuickJumper: true,
+              pageSizeOptions: ['5', '10', '20', '50', '100'],
+              onShowSizeChange: (current, size) => {
+                setPageSize(size);
+              },
               showTotal: (total, range) =>
                 `第 ${range[0]}-${range[1]} 條，共 ${total} 條記錄`,
             }}
