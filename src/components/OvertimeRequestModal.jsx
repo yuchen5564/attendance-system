@@ -91,7 +91,8 @@ const OvertimeRequestModal = ({ onClose, onSubmit }) => {
       open={true}
       onCancel={onClose}
       footer={null}
-      width={500}
+      width="90%"
+      style={{ maxWidth: '500px', minWidth: '320px' }}
       destroyOnClose
     >
       <Form
@@ -110,6 +111,7 @@ const OvertimeRequestModal = ({ onClose, onSubmit }) => {
             placeholder="選擇加班日期"
             disabledDate={disabledDate}
             format="YYYY-MM-DD"
+            size="large"
           />
         </Form.Item>
 
@@ -124,6 +126,7 @@ const OvertimeRequestModal = ({ onClose, onSubmit }) => {
             format="HH:mm"
             onChange={handleTimeChange}
             minuteStep={15}
+            size="large"
           />
         </Form.Item>
 
@@ -151,6 +154,7 @@ const OvertimeRequestModal = ({ onClose, onSubmit }) => {
             placeholder="請詳細說明加班原因..."
             maxLength={500}
             showCount
+            style={{ fontSize: '16px' }}
           />
         </Form.Item>
 

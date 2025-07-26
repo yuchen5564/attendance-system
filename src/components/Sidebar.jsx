@@ -11,7 +11,7 @@ import {
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 
-const Sidebar = ({ currentPage, setCurrentPage, collapsed }) => {
+const Sidebar = ({ currentPage, setCurrentPage, collapsed, isMobile }) => {
   const { userData } = useAuth();
 
   const navigationItems = [
@@ -82,7 +82,10 @@ const Sidebar = ({ currentPage, setCurrentPage, collapsed }) => {
     }));
 
   return (
-    <div style={{ height: '100vh', paddingTop: '16px' }}>
+    <div style={{ 
+      height: '100vh', 
+      paddingTop: isMobile ? '8px' : '16px',
+    }}>
       <Menu
         mode="inline"
         selectedKeys={[currentPage]}
@@ -91,7 +94,9 @@ const Sidebar = ({ currentPage, setCurrentPage, collapsed }) => {
         style={{
           height: '100%',
           borderRight: 0,
+          fontSize: isMobile ? '16px' : '14px',
         }}
+        theme={isMobile ? 'light' : 'light'}
       />
     </div>
   );

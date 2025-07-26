@@ -133,7 +133,8 @@ const LeaveRequestModal = ({ onClose, onSubmit }) => {
       open={true}
       onCancel={onClose}
       footer={null}
-      width={500}
+      width="90%"
+      style={{ maxWidth: '500px', minWidth: '320px' }}
       destroyOnClose
     >
       <Form
@@ -151,6 +152,7 @@ const LeaveRequestModal = ({ onClose, onSubmit }) => {
             placeholder="請選擇請假類型"
             loading={leaveTypesLoading}
             onChange={handleLeaveTypeChange}
+            size="large"
             notFoundContent={leaveTypesLoading ? <Spin size="small" /> : '無可用假別'}
           >
             {leaveTypes.map(leaveType => (
@@ -211,6 +213,7 @@ const LeaveRequestModal = ({ onClose, onSubmit }) => {
             placeholder={['開始日期', '結束日期']}
             disabledDate={disabledDate}
             onChange={handleDateChange}
+            size="large"
           />
         </Form.Item>
 
@@ -241,6 +244,7 @@ const LeaveRequestModal = ({ onClose, onSubmit }) => {
             placeholder="請詳細說明請假原因..."
             maxLength={500}
             showCount
+            style={{ fontSize: '16px' }}
           />
         </Form.Item>
 

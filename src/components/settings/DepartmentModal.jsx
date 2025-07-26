@@ -36,7 +36,8 @@ const DepartmentModal = ({
       onCancel={onCancel}
       footer={null}
       destroyOnClose
-      width={500}
+      width="90%"
+      style={{ maxWidth: '500px', minWidth: '320px' }}
     >
       <Form
         form={form}
@@ -70,6 +71,7 @@ const DepartmentModal = ({
             prefix={<TeamOutlined />}
             showCount
             maxLength={50}
+            size="large"
           />
         </Form.Item>
 
@@ -85,6 +87,7 @@ const DepartmentModal = ({
             rows={4}
             showCount
             maxLength={200}
+            style={{ fontSize: '16px' }}
           />
         </Form.Item>
 

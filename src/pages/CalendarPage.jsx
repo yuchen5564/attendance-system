@@ -254,49 +254,52 @@ const CalendarPage = () => {
       }
     });
 
+    const isMobile = window.innerWidth < 768;
+    const isSmallMobile = window.innerWidth < 480;
+    
     return (
       <div style={{ 
-        padding: '4px', 
-        fontSize: '14px', 
-        lineHeight: '1.4',
+        padding: isSmallMobile ? '2px' : '4px', 
+        fontSize: isSmallMobile ? '11px' : '14px', 
+        lineHeight: '1.2',
         height: '100%',
         overflow: 'hidden'
       }}>
         {/* 上班打卡 */}
         {groupedData.clockIn.length > 0 && (
-          <div style={{ marginBottom: '3px' }}>
+          <div style={{ marginBottom: isSmallMobile ? '2px' : '3px' }}>
             <span style={{ 
               color: '#52c41a', 
               fontWeight: 'bold',
-              fontSize: '13px'
+              fontSize: isSmallMobile ? '10px' : '13px'
             }}>
-              上班 {groupedData.clockIn[0].time}
+              {isSmallMobile ? '上' : '上班'} {groupedData.clockIn[0].time}
             </span>
           </div>
         )}
         
         {/* 下班打卡 */}
         {groupedData.clockOut.length > 0 && (
-          <div style={{ marginBottom: '3px' }}>
+          <div style={{ marginBottom: isSmallMobile ? '2px' : '3px' }}>
             <span style={{ 
               color: '#fa8c16', 
               fontWeight: 'bold',
-              fontSize: '13px'
+              fontSize: isSmallMobile ? '10px' : '13px'
             }}>
-              下班 {groupedData.clockOut[0].time}
+              {isSmallMobile ? '下' : '下班'} {groupedData.clockOut[0].time}
             </span>
           </div>
         )}
         
         {/* 請假記錄 */}
         {groupedData.leaves.slice(0, 1).map((item, index) => (
-          <div key={index} style={{ marginBottom: '3px' }}>
+          <div key={index} style={{ marginBottom: isSmallMobile ? '2px' : '3px' }}>
             <span style={{ 
               color: item.color,
-              fontSize: '12px',
+              fontSize: isSmallMobile ? '9px' : '12px',
               backgroundColor: `${item.color}15`,
-              padding: '3px 6px',
-              borderRadius: '4px',
+              padding: isSmallMobile ? '2px 4px' : '3px 6px',
+              borderRadius: '3px',
               display: 'inline-block',
               maxWidth: '100%',
               overflow: 'hidden',
@@ -311,13 +314,13 @@ const CalendarPage = () => {
         
         {/* 加班記錄 */}
         {groupedData.overtimes.slice(0, 1).map((item, index) => (
-          <div key={index} style={{ marginBottom: '3px' }}>
+          <div key={index} style={{ marginBottom: isSmallMobile ? '2px' : '3px' }}>
             <span style={{ 
               color: item.color,
-              fontSize: '12px',
+              fontSize: isSmallMobile ? '9px' : '12px',
               backgroundColor: `${item.color}15`,
-              padding: '3px 6px',
-              borderRadius: '4px',
+              padding: isSmallMobile ? '2px 4px' : '3px 6px',
+              borderRadius: '3px',
               display: 'inline-block',
               maxWidth: '100%',
               overflow: 'hidden',
@@ -331,8 +334,8 @@ const CalendarPage = () => {
         ))}
         
         {/* 如果有更多記錄，顯示省略號 */}
-        {(groupedData.leaves.length + groupedData.overtimes.length > 2) && (
-          <div style={{ fontSize: '11px', color: '#999', fontWeight: '500' }}>
+        {(groupedData.leaves.length + groupedData.overtimes.length > 2) && !isSmallMobile && (
+          <div style={{ fontSize: '10px', color: '#999', fontWeight: '500' }}>
             +{groupedData.leaves.length + groupedData.overtimes.length - 2}...
           </div>
         )}
@@ -545,16 +548,17 @@ const CalendarPage = () => {
       {(isAdmin || isManager) && (
         <Card style={{ marginBottom: '24px' }}>
           <Row gutter={[16, 16]} align="middle">
-            <Col>
+            <Col xs={24} sm={6} md={4}>
               <UserOutlined style={{ fontSize: '16px', color: '#1890ff' }} />
               <span style={{ marginLeft: '8px', fontWeight: 500 }}>選擇員工：</span>
             </Col>
-            <Col flex="auto">
+            <Col xs={24} sm={18} md={20}>
               <Select
-                style={{ width: '100%', maxWidth: '300px' }}
+                style={{ width: '100%' }}
                 value={selectedUserId}
                 onChange={setSelectedUserId}
                 placeholder="選擇要查看的員工"
+                size="large"
               >
                 {users.map(user => (
                   <Option key={user.uid} value={user.uid}>
@@ -605,6 +609,36 @@ const CalendarPage = () => {
             height: 90px !important;
             overflow: hidden !important;
           }
+          
+          @media (max-width: 768px) {
+            .calendar-custom .ant-picker-cell {
+              height: 80px;
+            }
+            .calendar-custom .ant-picker-cell-inner {
+              height: 80px !important;
+            }
+            .calendar-custom .ant-picker-calendar-date-content {
+              height: 60px !important;
+            }
+            .calendar-custom .ant-picker-calendar-date {
+              font-size: 12px;
+            }
+          }
+          
+          @media (max-width: 480px) {
+            .calendar-custom .ant-picker-cell {
+              height: 60px;
+            }
+            .calendar-custom .ant-picker-cell-inner {
+              height: 60px !important;
+            }
+            .calendar-custom .ant-picker-calendar-date-content {
+              height: 45px !important;
+            }
+            .calendar-custom .ant-picker-calendar-date {
+              font-size: 11px;
+            }
+          }
         `}</style>
         <div className="calendar-custom">
           <Calendar 
@@ -627,7 +661,12 @@ const CalendarPage = () => {
         placement="right"
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
-        width={400}
+        width={window.innerWidth < 768 ? '90%' : 400}
+        styles={{
+          body: { 
+            padding: window.innerWidth < 768 ? '16px' : '24px' 
+          }
+        }}
       >
         {renderDrawerContent()}
       </Drawer>

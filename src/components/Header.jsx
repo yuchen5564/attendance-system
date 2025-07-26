@@ -6,13 +6,14 @@ import {
   UserOutlined,
   MenuUnfoldOutlined,
   MenuFoldOutlined,
+  MenuOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 
 const { Header: AntHeader } = Layout;
 const { Text } = Typography;
 
-const Header = ({ collapsed, setCollapsed }) => {
+const Header = ({ collapsed, setCollapsed, isMobile, setMobileDrawerOpen }) => {
   const { userData, signOut, getCompanyName } = useAuth();
   const { message } = App.useApp();
 
@@ -68,7 +69,7 @@ const Header = ({ collapsed, setCollapsed }) => {
   return (
     <AntHeader
       style={{
-        padding: '0 24px',
+        padding: isMobile ? '0 16px' : '0 24px',
         background: '#fff',
         display: 'flex',
         alignItems: 'center',
@@ -77,68 +78,83 @@ const Header = ({ collapsed, setCollapsed }) => {
         position: 'sticky',
         top: 0,
         zIndex: 1,
-        height: '64px', // 固定高度
+        height: isMobile ? '56px' : '64px',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '16px' }}>
         <Button
           type="text"
-          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          onClick={() => setCollapsed(!collapsed)}
+          icon={
+            isMobile 
+              ? <MenuOutlined /> 
+              : (collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />)
+          }
+          onClick={() => isMobile ? setMobileDrawerOpen(true) : setCollapsed(!collapsed)}
           style={{
             fontSize: '16px',
-            width: 64,
-            height: 64,
+            width: isMobile ? 56 : 64,
+            height: isMobile ? 56 : 64,
           }}
         />
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <ClockCircleOutlined style={{ fontSize: '24px', color: '#3b82f6' }} />
-          <Text strong style={{ fontSize: '18px' }}>
-            {getCompanyName()} 打卡系統
+          <ClockCircleOutlined style={{ 
+            fontSize: isMobile ? '20px' : '24px', 
+            color: '#3b82f6' 
+          }} />
+          <Text strong style={{ 
+            fontSize: isMobile ? '16px' : '18px',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            maxWidth: isMobile ? '120px' : 'none',
+          }}>
+            {isMobile ? '打卡系統' : `${getCompanyName()} 打卡系統`}
           </Text>
         </div>
       </div>
 
-      <Space size="middle" align="center">
+      <Space size={isMobile ? "small" : "middle"} align="center">
         {/* 桌面版：顯示完整用戶信息 */}
-        <div 
-          style={{ 
-            textAlign: 'right', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'flex-end',
-            minWidth: '120px',
-          }}
-          className="user-info-desktop" // 可以用 CSS 控制響應式顯示
-        >
-          <Text strong style={{ whiteSpace: 'nowrap', lineHeight: '20px' }}>
-            {userData?.name || '用戶'}
-          </Text>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '6px', 
-            marginTop: '2px',
-            flexWrap: 'nowrap'
-          }}>
-            <Tag color={roleInfo.color} size="small" style={{ margin: 0, flexShrink: 0 }}>
-              {roleInfo.text}
-            </Tag>
-            <Text 
-              type="secondary" 
-              style={{ 
-                fontSize: '11px', 
-                whiteSpace: 'nowrap',
-                maxWidth: '80px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis'
-              }}
-            >
-              {userData?.department || '未設定'}
+        {!isMobile && (
+          <div 
+            style={{ 
+              textAlign: 'right', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'flex-end',
+              minWidth: '120px',
+            }}
+            className="user-info-desktop"
+          >
+            <Text strong style={{ whiteSpace: 'nowrap', lineHeight: '20px' }}>
+              {userData?.name || '用戶'}
             </Text>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              marginTop: '2px',
+              flexWrap: 'nowrap'
+            }}>
+              <Tag color={roleInfo.color} size="small" style={{ margin: 0, flexShrink: 0 }}>
+                {roleInfo.text}
+              </Tag>
+              <Text 
+                type="secondary" 
+                style={{ 
+                  fontSize: '11px', 
+                  whiteSpace: 'nowrap',
+                  maxWidth: '80px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                {userData?.department || '未設定'}
+              </Text>
+            </div>
           </div>
-        </div>
+        )}
         
         <Dropdown
           menu={{ items: userMenuItems }}
@@ -146,7 +162,7 @@ const Header = ({ collapsed, setCollapsed }) => {
           arrow
         >
           <Avatar 
-            size="large" 
+            size={isMobile ? "default" : "large"} 
             icon={<UserOutlined />}
             style={{ 
               backgroundColor: '#3b82f6',

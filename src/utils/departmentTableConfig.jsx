@@ -19,7 +19,10 @@ import dayjs from 'dayjs';
 const { Text } = Typography;
 
 // 生成部門表格欄位定義
-export const createDepartmentColumns = (handleEditDepartment, handleDeleteDepartment) => [
+export const createDepartmentColumns = (handleEditDepartment, handleDeleteDepartment) => {
+  const isMobile = window.innerWidth < 768;
+  
+  return [
   {
     title: '部門名稱',
     dataIndex: 'name',
@@ -34,7 +37,7 @@ export const createDepartmentColumns = (handleEditDepartment, handleDeleteDepart
       </Space>
     )
   },
-  {
+  ...(!isMobile ? [{
     title: '部門描述',
     dataIndex: 'description',
     key: 'description',
@@ -44,8 +47,8 @@ export const createDepartmentColumns = (handleEditDepartment, handleDeleteDepart
       </span>
     ),
     ellipsis: true
-  },
-  {
+  }] : []),
+  ...(!isMobile ? [{
     title: '創建時間',
     dataIndex: 'createdAt',
     key: 'createdAt',
@@ -62,23 +65,23 @@ export const createDepartmentColumns = (handleEditDepartment, handleDeleteDepart
         </Space>
       );
     }
-  },
+  }] : []),
   {
     title: '狀態',
     key: 'status',
-    width: 80,
+    width: isMobile ? 60 : 80,
     render: (_, record) => (
       <Tag color={record.isDefault ? 'blue' : 'green'} size="small">
-        {record.isDefault ? '系統預設' : '正常'}
+        {isMobile ? (record.isDefault ? '預設' : '正常') : (record.isDefault ? '系統預設' : '正常')}
       </Tag>
     )
   },
   {
     title: '操作',
     key: 'actions',
-    width: 120,
+    width: isMobile ? 80 : 120,
     render: (_, record) => (
-      <Space>
+      <Space size={isMobile ? 4 : 8}>
         <Tooltip title="編輯部門">
           <Button
             type="text"
@@ -119,4 +122,5 @@ export const createDepartmentColumns = (handleEditDepartment, handleDeleteDepart
       </Space>
     )
   }
-];
+  ];
+};

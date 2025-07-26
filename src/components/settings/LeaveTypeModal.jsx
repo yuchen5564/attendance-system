@@ -52,7 +52,8 @@ const LeaveTypeModal = ({
       onCancel={onCancel}
       footer={null}
       destroyOnClose
-      width={600}
+      width="90%"
+      style={{ maxWidth: '600px', minWidth: '320px' }}
     >
       <Form
         form={form}
@@ -78,8 +79,8 @@ const LeaveTypeModal = ({
           style={{ marginBottom: '20px' }}
         />
 
-        <Row gutter={16}>
-          <Col span={12}>
+        <Row gutter={[16, 16]} style={{ display: 'flex', flexWrap: 'wrap' }}>
+          <Col xs={24} sm={12}>
             <Form.Item
               name="name"
               label="假別名稱"
@@ -94,10 +95,11 @@ const LeaveTypeModal = ({
                 prefix={<CalendarOutlined />}
                 showCount
                 maxLength={30}
+                size="large"
               />
             </Form.Item>
           </Col>
-          <Col span={12}>
+          <Col xs={24} sm={12}>
             <Form.Item
               name="daysAllowed"
               label="年度可請天數"
@@ -112,6 +114,7 @@ const LeaveTypeModal = ({
                 min={0}
                 max={365}
                 addonAfter="天"
+                size="large"
               />
             </Form.Item>
           </Col>
@@ -129,11 +132,12 @@ const LeaveTypeModal = ({
             rows={3}
             showCount
             maxLength={200}
+            style={{ fontSize: '16px' }}
           />
         </Form.Item>
 
-        <Row gutter={16}>
-          <Col span={8}>
+        <Row gutter={[16, 16]} style={{ display: 'flex', flexWrap: 'wrap' }}>
+          <Col xs={24} sm={8}>
             <Form.Item
               name="requireApproval"
               label="需要主管審核"
@@ -142,10 +146,11 @@ const LeaveTypeModal = ({
               <Switch 
                 checkedChildren="需要" 
                 unCheckedChildren="不需要"
+                size="default"
               />
             </Form.Item>
           </Col>
-          <Col span={8}>
+          <Col xs={24} sm={8}>
             <Form.Item
               name="isActive"
               label="啟用狀態"
@@ -154,10 +159,11 @@ const LeaveTypeModal = ({
               <Switch 
                 checkedChildren="啟用" 
                 unCheckedChildren="停用"
+                size="default"
               />
             </Form.Item>
           </Col>
-          <Col span={8}>
+          <Col xs={24} sm={8}>
             <Form.Item
               name="color"
               label="顯示顏色"
@@ -166,10 +172,11 @@ const LeaveTypeModal = ({
               <select
                 style={{
                   width: '100%',
-                  height: '32px',
+                  height: '40px',
                   border: '1px solid #d9d9d9',
                   borderRadius: '6px',
-                  padding: '4px 8px'
+                  padding: '8px 12px',
+                  fontSize: '16px'
                 }}
               >
                 {COLOR_OPTIONS.map(color => (

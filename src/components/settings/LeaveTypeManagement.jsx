@@ -44,10 +44,14 @@ const LeaveTypeManagement = ({
     <div>
       <Card 
         title={
-          <Space>
+          <Space size={window.innerWidth < 768 ? 'small' : 'middle'}>
             <CalendarOutlined />
-            請假假別管理
-            <Tag color="blue">{totalItems} 個假別</Tag>
+            <span style={{ fontSize: window.innerWidth < 768 ? '14px' : '16px' }}>
+              請假假別管理
+            </span>
+            <Tag color="blue" style={{ fontSize: window.innerWidth < 768 ? '12px' : '14px' }}>
+              {totalItems} 個假別
+            </Tag>
           </Space>
         }
         extra={
@@ -55,8 +59,9 @@ const LeaveTypeManagement = ({
             type="primary"
             icon={<PlusOutlined />}
             onClick={handleAddLeaveType}
+            size={window.innerWidth < 768 ? 'large' : 'middle'}
           >
-            新增假別
+            {window.innerWidth < 480 ? '新增' : '新增假別'}
           </Button>
         }
       >
@@ -65,26 +70,31 @@ const LeaveTypeManagement = ({
           description="在此管理公司的請假制度，所有假別資訊會同步到請假申請中。預設假別無法刪除，但可以編輯設定。"
           type="info"
           showIcon
-          style={{ marginBottom: '16px' }}
+          style={{ 
+            marginBottom: '16px',
+            fontSize: window.innerWidth < 768 ? '12px' : '14px'
+          }}
         />
 
         <Table
           dataSource={paginatedLeaveTypes}
           columns={leaveTypeColumns}
           rowKey="id"
-          size="middle"
+          size={window.innerWidth < 768 ? "small" : "middle"}
           pagination={false}
+          scroll={{ x: true }}
           locale={{
             emptyText: (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description="尚未設定任何請假假別"
-                style={{ margin: '40px 0' }}
+                style={{ margin: window.innerWidth < 768 ? '20px 0' : '40px 0' }}
               >
                 <Button 
                   type="primary" 
                   icon={<PlusOutlined />} 
                   onClick={handleAddLeaveType}
+                  size={window.innerWidth < 768 ? 'large' : 'middle'}
                 >
                   新增第一個假別
                 </Button>

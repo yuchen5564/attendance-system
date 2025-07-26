@@ -346,12 +346,18 @@ const SettingsPage = () => {
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '24px' 
+        alignItems: 'flex-start', 
+        marginBottom: '24px',
+        flexWrap: 'wrap',
+        gap: '16px'
       }}>
-        <div>
-          <Title level={2} style={{ margin: 0 }}>系統設定</Title>
-          <Text type="secondary">管理系統全域設定和參數</Text>
+        <div style={{ flex: 1, minWidth: '200px' }}>
+          <Title level={2} style={{ margin: 0, fontSize: window.innerWidth < 768 ? '1.5rem' : '2rem' }}>
+            系統設定
+          </Title>
+          <Text type="secondary" style={{ fontSize: window.innerWidth < 768 ? '14px' : '16px' }}>
+            管理系統全域設定和參數
+          </Text>
         </div>
         {activeTab === 'general' && (
           <Button
@@ -359,6 +365,8 @@ const SettingsPage = () => {
             icon={saving ? <ReloadOutlined spin /> : <SaveOutlined />}
             loading={saving}
             onClick={() => form.submit()}
+            size={window.innerWidth < 768 ? 'large' : 'middle'}
+            style={{ minWidth: window.innerWidth < 768 ? '120px' : 'auto' }}
           >
             {saving ? '儲存中...' : '儲存設定'}
           </Button>
@@ -369,13 +377,17 @@ const SettingsPage = () => {
       <Tabs
         activeKey={activeTab}
         onChange={setActiveTab}
+        size={window.innerWidth < 768 ? 'large' : 'middle'}
+        tabPosition={window.innerWidth < 480 ? 'top' : 'top'}
         items={[
           {
             key: 'general',
             label: (
-              <Space>
+              <Space size={window.innerWidth < 768 ? 'small' : 'middle'}>
                 <SettingOutlined />
-                一般設定
+                <span style={{ fontSize: window.innerWidth < 768 ? '14px' : '16px' }}>
+                  {window.innerWidth < 480 ? '一般' : '一般設定'}
+                </span>
               </Space>
             ),
             children: (
@@ -390,9 +402,11 @@ const SettingsPage = () => {
           {
             key: 'departments',
             label: (
-              <Space>
+              <Space size={window.innerWidth < 768 ? 'small' : 'middle'}>
                 <TeamOutlined />
-                部門管理
+                <span style={{ fontSize: window.innerWidth < 768 ? '14px' : '16px' }}>
+                  {window.innerWidth < 480 ? '部門' : '部門管理'}
+                </span>
               </Space>
             ),
             children: (
@@ -414,9 +428,11 @@ const SettingsPage = () => {
           {
             key: 'leaveTypes',
             label: (
-              <Space>
+              <Space size={window.innerWidth < 768 ? 'small' : 'middle'}>
                 <CalendarOutlined />
-                假別管理
+                <span style={{ fontSize: window.innerWidth < 768 ? '14px' : '16px' }}>
+                  {window.innerWidth < 480 ? '假別' : '假別管理'}
+                </span>
               </Space>
             ),
             children: (
@@ -438,9 +454,11 @@ const SettingsPage = () => {
           {
             key: 'email',
             label: (
-              <Space>
+              <Space size={window.innerWidth < 768 ? 'small' : 'middle'}>
                 <MailOutlined />
-                郵件設定
+                <span style={{ fontSize: window.innerWidth < 768 ? '14px' : '16px' }}>
+                  {window.innerWidth < 480 ? '郵件' : '郵件設定'}
+                </span>
               </Space>
             ),
             children: <EmailSettings />

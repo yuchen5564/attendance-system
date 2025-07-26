@@ -18,25 +18,67 @@ const Pagination = ({
     return null;
   }
 
+  const isMobile = window.innerWidth < 768;
+  
   return (
     <div 
       style={{
         display: 'flex',
-        justifyContent: 'space-between',
+        justifyContent: isMobile ? 'center' : 'space-between',
         alignItems: 'center',
         marginTop: '24px',
         padding: '16px 0',
         borderTop: '1px solid #f0f0f0',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? '16px' : '0',
       }}
     >
-      <div>
-        {showItemsPerPage && (
+      {!isMobile && (
+        <div>
+          {showItemsPerPage && (
+            <Space>
+              <Text>每頁顯示：</Text>
+              <Select
+                value={itemsPerPage}
+                onChange={onItemsPerPageChange}
+                style={{ width: 80 }}
+                size="small"
+              >
+                {itemsPerPageOptions.map(option => (
+                  <Option key={option} value={option}>
+                    {option}
+                  </Option>
+                ))}
+              </Select>
+              <Text type="secondary">條記錄</Text>
+            </Space>
+          )}
+        </div>
+      )}
+
+      <AntPagination
+        current={currentPage}
+        total={totalItems}
+        pageSize={itemsPerPage}
+        onChange={onPageChange}
+        showSizeChanger={false}
+        showQuickJumper={!isMobile}
+        showTotal={isMobile ? false : (total, range) =>
+          `第 ${range[0]}-${range[1]} 條，共 ${total} 條記錄`
+        }
+        size={isMobile ? "small" : "default"}
+        responsive
+        simple={isMobile}
+      />
+      
+      {isMobile && showItemsPerPage && (
+        <div style={{ textAlign: 'center' }}>
           <Space>
-            <Text>每頁顯示：</Text>
+            <Text style={{ fontSize: '14px' }}>每頁：</Text>
             <Select
               value={itemsPerPage}
               onChange={onItemsPerPageChange}
-              style={{ width: 80 }}
+              style={{ width: 70 }}
               size="small"
             >
               {itemsPerPageOptions.map(option => (
@@ -45,23 +87,12 @@ const Pagination = ({
                 </Option>
               ))}
             </Select>
-            <Text type="secondary">條記錄</Text>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              共 {totalItems} 條
+            </Text>
           </Space>
-        )}
-      </div>
-
-      <AntPagination
-        current={currentPage}
-        total={totalItems}
-        pageSize={itemsPerPage}
-        onChange={onPageChange}
-        showSizeChanger={false}
-        showQuickJumper
-        showTotal={(total, range) =>
-          `第 ${range[0]}-${range[1]} 條，共 ${total} 條記錄`
-        }
-        size="default"
-      />
+        </div>
+      )}
     </div>
   );
 };

@@ -33,6 +33,7 @@ const EmailSettings = () => {
   const [testLoading, setTestLoading] = useState(false);
   const [emailLogs, setEmailLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     loadEmailSettings();
@@ -302,15 +303,17 @@ Google App Script ID：${gasScriptId}
           rowKey="id"
           loading={logsLoading}
           pagination={{
-            pageSize: 10,
+            pageSize: pageSize,
             showSizeChanger: false,
-            showQuickJumper: true,
+            pageSizeOptions: ['10', '20', '50'],
             showTotal: (total, range) =>
               `第 ${range[0]}-${range[1]} 條，共 ${total} 條記錄`,
+            onShowSizeChange: (current, size) => { setPageSize(size); }
           }}
           locale={{
             emptyText: '暫無郵件發送記錄'
           }}
+          scroll={{ x: 1000 }}
         />
       </Card>
     </div>

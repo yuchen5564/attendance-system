@@ -22,7 +22,10 @@ import dayjs from 'dayjs';
 const { Text } = Typography;
 
 // 生成請假假別表格欄位定義
-export const createLeaveTypeColumns = (handleEditLeaveType, handleDeleteLeaveType) => [
+export const createLeaveTypeColumns = (handleEditLeaveType, handleDeleteLeaveType) => {
+  const isMobile = window.innerWidth < 768;
+  
+  return [
   {
     title: '假別名稱',
     dataIndex: 'name',
@@ -45,7 +48,7 @@ export const createLeaveTypeColumns = (handleEditLeaveType, handleDeleteLeaveTyp
       </Space>
     )
   },
-  {
+  ...(!isMobile ? [{
     title: '假別描述',
     dataIndex: 'description',
     key: 'description',
@@ -55,21 +58,21 @@ export const createLeaveTypeColumns = (handleEditLeaveType, handleDeleteLeaveTyp
       </span>
     ),
     ellipsis: true
-  },
+  }] : []),
   {
-    title: '年度天數',
+    title: isMobile ? '天數' : '年度天數',
     dataIndex: 'daysAllowed',
     key: 'daysAllowed',
-    width: 100,
+    width: isMobile ? 60 : 100,
     render: (days) => (
       <Space>
-        <CalendarOutlined style={{ color: '#1890ff' }} />
-        <span>{days} 天</span>
+        {!isMobile && <CalendarOutlined style={{ color: '#1890ff' }} />}
+        <span>{days} {isMobile ? '天' : '天'}</span>
       </Space>
     ),
     sorter: (a, b) => a.daysAllowed - b.daysAllowed
   },
-  {
+  ...(!isMobile ? [{
     title: '審核設定',
     dataIndex: 'requireApproval',
     key: 'requireApproval',
@@ -84,15 +87,15 @@ export const createLeaveTypeColumns = (handleEditLeaveType, handleDeleteLeaveTyp
       { text: '免審核', value: false }
     ],
     onFilter: (value, record) => record.requireApproval === value
-  },
+  }] : []),
   {
     title: '狀態',
     dataIndex: 'isActive',
     key: 'isActive',
-    width: 80,
+    width: isMobile ? 60 : 80,
     render: (isActive, record) => {
       if (record.isDefault) {
-        return <Tag color="blue" size="small">系統預設</Tag>;
+        return <Tag color="blue" size="small">{isMobile ? '預設' : '系統預設'}</Tag>;
       }
       return (
         <Badge 
@@ -101,13 +104,13 @@ export const createLeaveTypeColumns = (handleEditLeaveType, handleDeleteLeaveTyp
         />
       );
     },
-    filters: [
+    filters: !isMobile ? [
       { text: '啟用', value: true },
       { text: '停用', value: false }
-    ],
-    onFilter: (value, record) => record.isActive === value
+    ] : undefined,
+    onFilter: !isMobile ? (value, record) => record.isActive === value : undefined
   },
-  {
+  ...(!isMobile ? [{
     title: '創建時間',
     dataIndex: 'createdAt',
     key: 'createdAt',
@@ -129,13 +132,13 @@ export const createLeaveTypeColumns = (handleEditLeaveType, handleDeleteLeaveTyp
       const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
       return dateA - dateB;
     }
-  },
+  }] : []),
   {
     title: '操作',
     key: 'actions',
-    width: 120,
+    width: isMobile ? 80 : 120,
     render: (_, record) => (
-      <Space>
+      <Space size={isMobile ? 4 : 8}>
         <Tooltip title="編輯假別">
           <Button
             type="text"
@@ -176,4 +179,5 @@ export const createLeaveTypeColumns = (handleEditLeaveType, handleDeleteLeaveTyp
       </Space>
     )
   }
-];
+  ];
+};

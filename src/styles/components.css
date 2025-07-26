@@ -549,6 +549,76 @@
   color: #ef4444;
 }
 
+/* 手機版表格優化 */
+@media (max-width: 768px) {
+  /* Ant Design 表格手機版樣式 */
+  .ant-table-wrapper {
+    font-size: 12px;
+  }
+  
+  .ant-table-thead > tr > th {
+    padding: 8px 4px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  
+  .ant-table-tbody > tr > td {
+    padding: 8px 4px;
+    font-size: 12px;
+  }
+  
+  .ant-table .ant-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    height: auto;
+    min-height: 32px;
+  }
+  
+  .ant-space-item {
+    margin-right: 4px !important;
+  }
+  
+  /* 隱藏部分欄位 */
+  .mobile-hide {
+    display: none !important;
+  }
+  
+  /* 卡片和統計區塊 */
+  .ant-card {
+    margin-bottom: 12px;
+  }
+  
+  .ant-card-body {
+    padding: 16px;
+  }
+  
+  /* 表單元素觸控優化 */
+  .ant-btn {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  
+  .ant-input,
+  .ant-select-selector {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  
+  /* 模態框調整 */
+  .ant-modal {
+    margin: 16px;
+    max-width: calc(100vw - 32px);
+  }
+  
+  .ant-modal-content {
+    border-radius: 8px;
+  }
+  
+  .ant-modal-body {
+    padding: 16px;
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .header {
@@ -592,6 +662,12 @@
   
   .clock-buttons {
     flex-direction: column;
+    gap: 12px;
+  }
+  
+  .clock-btn {
+    min-height: 48px;
+    font-size: 16px;
   }
   
   .login-container {
@@ -620,6 +696,39 @@
   
   .sidebar-overlay.show {
     display: block;
+  }
+  
+  /* 時鐘小工具手機版 */
+  .clock-widget {
+    padding: 1.5rem;
+  }
+  
+  .clock-time {
+    font-size: 2.5rem;
+  }
+  
+  .clock-date {
+    font-size: 1rem;
+  }
+}
+
+/* 極小螢幕優化 */
+@media (max-width: 480px) {
+  .ant-modal {
+    margin: 8px;
+    max-width: calc(100vw - 16px);
+  }
+  
+  .clock-time {
+    font-size: 2rem !important;
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+  }
+  
+  .ant-card-body {
+    padding: 12px;
   }
 }
 

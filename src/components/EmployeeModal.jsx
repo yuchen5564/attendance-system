@@ -149,7 +149,8 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
       open={true}
       onCancel={onClose}
       footer={null}
-      width={600}
+      width="90%"
+      style={{ maxWidth: '600px', minWidth: '320px' }}
       destroyOnClose
     >
       <Form
@@ -166,6 +167,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
           <Input 
             prefix={<UserOutlined />}
             placeholder="請輸入員工姓名" 
+            size="large"
           />
         </Form.Item>
 
@@ -181,6 +183,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
             prefix={<MailOutlined />}
             placeholder="請輸入電子郵件"
             disabled={!!employee}
+            size="large"
           />
         </Form.Item>
 
@@ -209,6 +212,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
                 : "請設定密碼（至少6個字元）"
             }
             disabled={!!employee}
+            size="large"
           />
         </Form.Item>
 
@@ -221,7 +225,11 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
           />
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          gap: '16px' 
+        }}>
           <Form.Item
             name="department"
             label="部門"
@@ -231,6 +239,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
               placeholder="請選擇部門"
               loading={departmentsLoading}
               showSearch
+              size="large"
               filterOption={(input, option) =>
                 (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
               }
@@ -270,17 +279,21 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
             label="職位"
             rules={[{ required: true, message: '請輸入職位' }]}
           >
-            <Input placeholder="請輸入職位" />
+            <Input placeholder="請輸入職位" size="large" />
           </Form.Item>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          gap: '16px' 
+        }}>
           <Form.Item
             name="role"
             label="角色權限"
             rules={[{ required: true, message: '請選擇角色權限' }]}
           >
-            <Select placeholder="請選擇角色權限">
+            <Select placeholder="請選擇角色權限" size="large">
               {roles.map(role => (
                 <Option key={role.value} value={role.value}>
                   <Space>
@@ -301,6 +314,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
               allowClear
               loading={managersLoading}
               showSearch
+              size="large"
               filterOption={(input, option) =>
                 (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
               }
@@ -322,7 +336,11 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
             </Select>
           </Form.Item>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          gap: '16px' 
+        }}>
           <Form.Item
             name="workingHours"
             label="工作時間"
@@ -332,6 +350,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
               format="HH:mm"
               placeholder={['上班時間', '下班時間']}
               style={{ width: '100%' }}
+              size="large"
             />
           </Form.Item>
 
@@ -345,6 +364,7 @@ const EmployeeModal = ({ employee, onClose, onSubmit }) => {
               <Switch 
                 checkedChildren="啟用" 
                 unCheckedChildren="停用" 
+                size="default"
               />
             </Form.Item>
           )}

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider, Layout, theme, App as AntApp } from 'antd';
+import { ConfigProvider, Layout, theme, App as AntApp, Drawer } from 'antd';
 import zhTW from 'antd/locale/zh_TW';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-tw';
@@ -43,10 +43,23 @@ const ProtectedRoute = ({ children }) => {
 const MainLayout = ({ currentPage, setCurrentPage }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   
   const {
     token: { colorBgContainer },
   } = theme.useToken();
+
+  // 檢測螢幕尺寸
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
 
   const renderCurrentPage = () => {
     switch (currentPage) {
@@ -73,42 +86,72 @@ const MainLayout = ({ currentPage, setCurrentPage }) => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider
-        theme="light"
-        collapsible
-        collapsed={collapsed}
-        onCollapse={(value) => setCollapsed(value)}
-        breakpoint="lg"
-        onBreakpoint={(broken) => {
-          if (broken) {
-            setCollapsed(true);
-          }
-        }}
-        style={{
-          overflow: 'auto',
-          height: '100vh',
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-        }}
-      >
-        <Sidebar 
-          currentPage={currentPage} 
-          setCurrentPage={setCurrentPage}
+      {/* 桌面版側邊欄 */}
+      {!isMobile && (
+        <Sider
+          theme="light"
+          collapsible
           collapsed={collapsed}
-        />
-      </Sider>
+          onCollapse={(value) => setCollapsed(value)}
+          breakpoint="lg"
+          onBreakpoint={(broken) => {
+            if (broken) {
+              setCollapsed(true);
+            }
+          }}
+          style={{
+            overflow: 'auto',
+            height: '100vh',
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            bottom: 0,
+          }}
+        >
+          <Sidebar 
+            currentPage={currentPage} 
+            setCurrentPage={setCurrentPage}
+            collapsed={collapsed}
+          />
+        </Sider>
+      )}
+
+      {/* 手機版側邊欄抽屜 */}
+      {isMobile && (
+        <Drawer
+          title="選單"
+          placement="left"
+          onClose={() => setMobileDrawerOpen(false)}
+          open={mobileDrawerOpen}
+          bodyStyle={{ padding: 0 }}
+          width={280}
+        >
+          <Sidebar 
+            currentPage={currentPage} 
+            setCurrentPage={(page) => {
+              setCurrentPage(page);
+              setMobileDrawerOpen(false);
+            }}
+            collapsed={false}
+            isMobile={true}
+          />
+        </Drawer>
+      )}
       
-      <Layout style={{ marginLeft: collapsed ? 80 : 200, transition: 'margin-left 0.2s' }}>
+      <Layout style={{ 
+        marginLeft: isMobile ? 0 : (collapsed ? 80 : 200), 
+        transition: 'margin-left 0.2s' 
+      }}>
         <Header 
           collapsed={collapsed} 
           setCollapsed={setCollapsed}
+          isMobile={isMobile}
+          setMobileDrawerOpen={setMobileDrawerOpen}
         />
         
         <Content
           style={{
-            padding: 24,
+            padding: isMobile ? 16 : 24,
             margin: 0,
             minHeight: 280,
             background: '#f5f5f5',
