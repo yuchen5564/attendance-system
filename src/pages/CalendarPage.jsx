@@ -30,6 +30,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../firebase/firestoreService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import dayjs from 'dayjs';
+import isBetween from 'dayjs/plugin/isBetween';
+
+// 啟用 isBetween 插件
+dayjs.extend(isBetween);
 
 const { Title, Text } = Typography;
 const { Option } = Select;

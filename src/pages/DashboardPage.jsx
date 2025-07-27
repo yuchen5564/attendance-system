@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Row, 
   Col, 
@@ -28,7 +28,7 @@ import dayjs from 'dayjs';
 const { Title, Text } = Typography;
 
 const DashboardPage = () => {
-  const { userData, isAdmin, isManager } = useAuth();
+  const { userData, isAdmin, isManager, getCachedUsers, getCachedAttendanceRecords } = useAuth();
   const { message } = App.useApp();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -39,11 +39,71 @@ const DashboardPage = () => {
   });
   const [recentAttendance, setRecentAttendance] = useState([]);
 
+  // 記憶化時間格式化函數 - 必須在所有條件渲染之前
+  const formatTime = useCallback((timestamp) => {
+    if (!timestamp) return '';
+    try {
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      return dayjs(date).format('HH:mm');
+    } catch (error) {
+      console.warn('時間格式化失敗:', error);
+      return '';
+    }
+  }, []);
+
+  const formatDate = useCallback((timestamp) => {
+    if (!timestamp) return '';
+    try {
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      return dayjs(date).format('YYYY-MM-DD');
+    } catch (error) {
+      console.warn('日期格式化失敗:', error);
+      return '';
+    }
+  }, []);
+
+  // 記憶化統計卡片
+  const statisticCards = useMemo(() => [
+    {
+      title: "今日打卡",
+      value: stats.todayAttendance,
+      prefix: <ClockCircleOutlined style={{ color: '#3b82f6' }} />,
+      suffix: "次"
+    },
+    {
+      title: "本月出勤", 
+      value: stats.monthlyAttendance,
+      prefix: <ArrowUpOutlined style={{ color: '#10b981' }} />,
+      suffix: "次"
+    },
+    {
+      title: "待審核請假",
+      value: stats.pendingLeaves,
+      prefix: <CalendarOutlined style={{ color: '#f59e0b' }} />,
+      suffix: "件"
+    },
+    ...(isAdmin || isManager ? [{
+      title: "總員工數",
+      value: stats.totalEmployees, 
+      prefix: <TeamOutlined style={{ color: '#3b82f6' }} />,
+      suffix: "人"
+    }] : [])
+  ], [stats, isAdmin, isManager]);
+
+  // 記憶化打卡記錄列表
+  const attendanceList = useMemo(() => 
+    recentAttendance.map((record) => ({
+      ...record,
+      formattedTime: formatTime(record.timestamp),
+      formattedDate: formatDate(record.timestamp)
+    }))
+  , [recentAttendance, formatTime, formatDate]);
+
   useEffect(() => {
     loadDashboardData();
   }, [userData]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (forceRefresh = false) => {
     if (!userData) {
       console.log('❌ 沒有用戶資料，跳過載入');
       return;
@@ -56,14 +116,14 @@ const DashboardPage = () => {
       // 1. 載入今日打卡狀態
       const todayRecords = await firestoreService.getTodayAttendance(userData.uid);
       
-      // 2. 載入最近的打卡記錄
-      const recentRecords = await firestoreService.getAttendanceRecords(userData.uid);
+      // 2. 載入最近的打卡記錄 (使用快取)
+      const recentRecords = await getCachedAttendanceRecords(userData.uid, forceRefresh);
       setRecentAttendance((recentRecords || []).slice(0, 5));
 
       // 3. 載入統計數據（根據權限）
       if (isAdmin || isManager) {
         try {
-          const users = await firestoreService.getAllUsers();
+          const users = await getCachedUsers(forceRefresh);
           const leaveRequests = await firestoreService.getLeaveRequests();
 
           setStats({
@@ -128,28 +188,6 @@ const DashboardPage = () => {
     return <LoadingSpinner text="載入儀表板中..." />;
   }
 
-  const formatTime = (timestamp) => {
-    if (!timestamp) return '';
-    try {
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return dayjs(date).format('HH:mm');
-    } catch (error) {
-      console.warn('時間格式化失敗:', error);
-      return '';
-    }
-  };
-
-  const formatDate = (timestamp) => {
-    if (!timestamp) return '';
-    try {
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return dayjs(date).format('YYYY-MM-DD');
-    } catch (error) {
-      console.warn('日期格式化失敗:', error);
-      return '';
-    }
-  };
-
   return (
     <div>
       <div style={{ marginBottom: '24px' }}>
@@ -158,55 +196,33 @@ const DashboardPage = () => {
       </div>
 
       {/* 打卡組件 */}
-      <ClockWidget onClockAction={loadDashboardData} />
+      <ClockWidget onClockAction={(actionType, newRecord) => {
+        // 優化: 收到打卡通知後只更新相關統計，而非重新載入全部資料
+        setStats(prev => ({
+          ...prev,
+          todayAttendance: prev.todayAttendance + 1
+        }));
+        
+        // 更新最近打卡記錄
+        if (newRecord) {
+          setRecentAttendance(prev => [newRecord, ...prev.slice(0, 4)]);
+        }
+      }} />
 
       {/* 統計卡片 */}
       <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="今日打卡"
-              value={stats.todayAttendance}
-              prefix={<ClockCircleOutlined style={{ color: '#3b82f6' }} />}
-              suffix="次"
-            />
-          </Card>
-        </Col>
-        
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="本月出勤"
-              value={stats.monthlyAttendance}
-              prefix={<ArrowUpOutlined style={{ color: '#10b981' }} />}
-              suffix="次"
-            />
-          </Card>
-        </Col>
-        
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="待審核請假"
-              value={stats.pendingLeaves}
-              prefix={<CalendarOutlined style={{ color: '#f59e0b' }} />}
-              suffix="件"
-            />
-          </Card>
-        </Col>
-        
-        {(isAdmin || isManager) && (
-          <Col xs={24} sm={12} lg={6}>
+        {statisticCards.map((card, index) => (
+          <Col xs={24} sm={12} lg={6} key={card.title}>
             <Card>
               <Statistic
-                title="總員工數"
-                value={stats.totalEmployees}
-                prefix={<TeamOutlined style={{ color: '#3b82f6' }} />}
-                suffix="人"
+                title={card.title}
+                value={card.value}
+                prefix={card.prefix}
+                suffix={card.suffix}
               />
             </Card>
           </Col>
-        )}
+        ))}
       </Row>
 
       {/* 最近打卡記錄 */}
@@ -225,16 +241,16 @@ const DashboardPage = () => {
           />
         ) : (
           <List
-            dataSource={recentAttendance}
+            dataSource={attendanceList}
             renderItem={(record) => (
               <List.Item>
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                   <div>
                     <div style={{ fontWeight: '600', fontSize: '16px' }}>
-                      {formatTime(record.timestamp)}
+                      {record.formattedTime}
                     </div>
                     <Text type="secondary" style={{ fontSize: '14px' }}>
-                      {formatDate(record.timestamp)}
+                      {record.formattedDate}
                     </Text>
                   </div>
                   <Tag 

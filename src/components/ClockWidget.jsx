@@ -12,7 +12,7 @@ import dayjs from 'dayjs';
 const { Title, Text } = Typography;
 
 const ClockWidget = ({ onClockAction }) => {
-  const { userData } = useAuth();
+  const { userData, invalidateCache } = useAuth();
   const { message } = App.useApp();
   const [currentTime, setCurrentTime] = useState(dayjs());
   const [loading, setLoading] = useState(false);
@@ -57,8 +57,21 @@ const ClockWidget = ({ onClockAction }) => {
     try {
       await firestoreService.clockIn(userData.uid);
       message.success('上班打卡成功！');
-      await loadTodayRecords();
-      if (onClockAction) onClockAction();
+      
+      // 優化: 直接更新本地狀態，避免重複API調用
+      const newRecord = {
+        userId: userData.uid,
+        type: 'clock_in',
+        timestamp: new Date(),
+        id: Date.now().toString()
+      };
+      setTodayRecords(prev => [newRecord, ...prev]);
+      
+      // 清除打卡記錄快取，讓其他組件獲取最新資料
+      invalidateCache('attendance');
+      
+      // 通知父組件更新 (傳遞動作類型，避免重複查詢)
+      if (onClockAction) onClockAction('clock_in', newRecord);
     } catch (error) {
       console.error('打卡失敗:', error);
       message.error('打卡失敗，請稍後再試');
@@ -72,8 +85,21 @@ const ClockWidget = ({ onClockAction }) => {
     try {
       await firestoreService.clockOut(userData.uid);
       message.success('下班打卡成功！');
-      await loadTodayRecords();
-      if (onClockAction) onClockAction();
+      
+      // 優化: 直接更新本地狀態
+      const newRecord = {
+        userId: userData.uid,
+        type: 'clock_out',
+        timestamp: new Date(),
+        id: Date.now().toString()
+      };
+      setTodayRecords(prev => [newRecord, ...prev]);
+      
+      // 清除打卡記錄快取
+      invalidateCache('attendance');
+      
+      // 通知父組件更新
+      if (onClockAction) onClockAction('clock_out', newRecord);
     } catch (error) {
       console.error('打卡失敗:', error);
       message.error('打卡失敗，請稍後再試');

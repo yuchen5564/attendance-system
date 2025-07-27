@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider, Layout, theme, App as AntApp, Drawer } from 'antd';
 import zhTW from 'antd/locale/zh_TW';
@@ -9,15 +9,17 @@ import LoadingSpinner from './components/LoadingSpinner';
 import InitializeSystem from './components/InitializeSystem';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-import AttendancePage from './pages/AttendancePage';
-import CalendarPage from './pages/CalendarPage';
-import LeaveRequestsPage from './pages/LeaveRequestsPage';
-import OvertimeRequestsPage from './pages/OvertimeRequestsPage';
-import EmployeesPage from './pages/EmployeesPage';
-import ReportsPage from './pages/ReportsPage';
-import SettingsPage from './pages/SettingsPage';
+
+// 懶加載頁面組件
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const AttendancePage = lazy(() => import('./pages/AttendancePage'));
+const CalendarPage = lazy(() => import('./pages/CalendarPage'));
+const LeaveRequestsPage = lazy(() => import('./pages/LeaveRequestsPage'));
+const OvertimeRequestsPage = lazy(() => import('./pages/OvertimeRequestsPage'));
+const EmployeesPage = lazy(() => import('./pages/EmployeesPage'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
 // 設定 dayjs 語言
 dayjs.locale('zh-tw');
@@ -62,26 +64,34 @@ const MainLayout = ({ currentPage, setCurrentPage }) => {
   }, []);
 
   const renderCurrentPage = () => {
-    switch (currentPage) {
-      case 'dashboard':
-        return <DashboardPage />;
-      case 'attendance':
-        return <AttendancePage />;
-      case 'calendar':
-        return <CalendarPage />;
-      case 'leave-requests':
-        return <LeaveRequestsPage />;
-      case 'overtime-requests':
-        return <OvertimeRequestsPage />;
-      case 'employees':
-        return <EmployeesPage />;
-      case 'reports':
-        return <ReportsPage />;
-      case 'settings':
-        return <SettingsPage />;
-      default:
-        return <DashboardPage />;
-    }
+    const PageComponent = () => {
+      switch (currentPage) {
+        case 'dashboard':
+          return <DashboardPage />;
+        case 'attendance':
+          return <AttendancePage />;
+        case 'calendar':
+          return <CalendarPage />;
+        case 'leave-requests':
+          return <LeaveRequestsPage />;
+        case 'overtime-requests':
+          return <OvertimeRequestsPage />;
+        case 'employees':
+          return <EmployeesPage />;
+        case 'reports':
+          return <ReportsPage />;
+        case 'settings':
+          return <SettingsPage />;
+        default:
+          return <DashboardPage />;
+      }
+    };
+
+    return (
+      <Suspense fallback={<LoadingSpinner text="載入頁面中..." />}>
+        <PageComponent />
+      </Suspense>
+    );
   };
 
   return (
@@ -189,7 +199,11 @@ const AppContent = () => {
       <Route 
         path="/login" 
         element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />
+          isAuthenticated ? <Navigate to="/dashboard" replace /> : (
+            <Suspense fallback={<LoadingSpinner text="載入登入頁面..." />}>
+              <LoginPage />
+            </Suspense>
+          )
         } 
       />
 

@@ -21,6 +21,18 @@ export const AuthProvider = ({ children }) => {
   const [systemInitialized, setSystemInitialized] = useState(false);
   const [checkingSystem, setCheckingSystem] = useState(true);
   const [systemSettings, setSystemSettings] = useState(null);
+  
+  // 全域資料快取
+  const [sharedData, setSharedData] = useState({
+    users: null,
+    usersLastFetch: null,
+    departments: null,
+    departmentsLastFetch: null,
+    leaveTypes: null,
+    leaveTypesLastFetch: null,
+    attendanceRecords: new Map(), // 使用 Map 儲存不同用戶的打卡記錄
+    attendanceLastFetch: new Map(),
+  });
 
   useEffect(() => {
     // 首先檢查系統是否已初始化
@@ -260,6 +272,129 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // 快取管理方法
+  const CACHE_DURATION = 5 * 60 * 1000; // 5分鐘快取
+
+  const getCachedUsers = async (forceRefresh = false) => {
+    const now = Date.now();
+    if (!forceRefresh && sharedData.users && sharedData.usersLastFetch && 
+        (now - sharedData.usersLastFetch) < CACHE_DURATION) {
+      console.log('🎯 使用快取的用戶資料');
+      return sharedData.users;
+    }
+    
+    console.log('🔄 重新載入用戶資料');
+    const users = await firestoreService.getAllUsers();
+    setSharedData(prev => ({ 
+      ...prev, 
+      users, 
+      usersLastFetch: now 
+    }));
+    return users;
+  };
+
+  const getCachedDepartments = async (forceRefresh = false) => {
+    try {
+      const now = Date.now();
+      if (!forceRefresh && sharedData.departments && sharedData.departmentsLastFetch && 
+          (now - sharedData.departmentsLastFetch) < CACHE_DURATION) {
+        console.log('🎯 使用快取的部門資料');
+        return sharedData.departments;
+      }
+      
+      console.log('🔄 重新載入部門資料');
+      const departments = await systemService.getDepartments();
+      setSharedData(prev => ({ 
+        ...prev, 
+        departments, 
+        departmentsLastFetch: now 
+      }));
+      return departments;
+    } catch (error) {
+      console.error('獲取部門資料失敗:', error);
+      return [];
+    }
+  };
+
+  const getCachedLeaveTypes = async (forceRefresh = false) => {
+    try {
+      const now = Date.now();
+      if (!forceRefresh && sharedData.leaveTypes && sharedData.leaveTypesLastFetch && 
+          (now - sharedData.leaveTypesLastFetch) < CACHE_DURATION) {
+        console.log('🎯 使用快取的假別資料');
+        return sharedData.leaveTypes;
+      }
+      
+      console.log('🔄 重新載入假別資料');
+      const leaveTypes = await systemService.getLeaveTypes();
+      setSharedData(prev => ({ 
+        ...prev, 
+        leaveTypes, 
+        leaveTypesLastFetch: now 
+      }));
+      return leaveTypes;
+    } catch (error) {
+      console.error('獲取假別資料失敗:', error);
+      return [];
+    }
+  };
+
+  const getCachedAttendanceRecords = async (userId, forceRefresh = false) => {
+    const now = Date.now();
+    const cacheKey = userId || 'all';
+    
+    if (!forceRefresh && sharedData.attendanceRecords.has(cacheKey) && 
+        sharedData.attendanceLastFetch.has(cacheKey) &&
+        (now - sharedData.attendanceLastFetch.get(cacheKey)) < CACHE_DURATION) {
+      console.log(`🎯 使用快取的打卡記錄 (${cacheKey})`);
+      return sharedData.attendanceRecords.get(cacheKey);
+    }
+    
+    console.log(`🔄 重新載入打卡記錄 (${cacheKey})`);
+    const records = await firestoreService.getAttendanceRecords(userId);
+    
+    const newAttendanceRecords = new Map(sharedData.attendanceRecords);
+    const newAttendanceLastFetch = new Map(sharedData.attendanceLastFetch);
+    
+    newAttendanceRecords.set(cacheKey, records);
+    newAttendanceLastFetch.set(cacheKey, now);
+    
+    setSharedData(prev => ({ 
+      ...prev, 
+      attendanceRecords: newAttendanceRecords,
+      attendanceLastFetch: newAttendanceLastFetch
+    }));
+    return records;
+  };
+
+  const invalidateCache = (type = 'all') => {
+    console.log(`🗑️ 清除快取: ${type}`);
+    setSharedData(prev => {
+      switch (type) {
+        case 'users':
+          return { ...prev, users: null, usersLastFetch: null };
+        case 'departments':
+          return { ...prev, departments: null, departmentsLastFetch: null };
+        case 'leaveTypes':
+          return { ...prev, leaveTypes: null, leaveTypesLastFetch: null };
+        case 'attendance':
+          return { ...prev, attendanceRecords: new Map(), attendanceLastFetch: new Map() };
+        case 'all':
+        default:
+          return {
+            users: null,
+            usersLastFetch: null,
+            departments: null,
+            departmentsLastFetch: null,
+            leaveTypes: null,
+            leaveTypesLastFetch: null,
+            attendanceRecords: new Map(),
+            attendanceLastFetch: new Map(),
+          };
+      }
+    });
+  };
+
   const value = {
     user,
     userData,
@@ -288,7 +423,14 @@ export const AuthProvider = ({ children }) => {
     getLeaveTypes,
     addLeaveType,
     deleteLeaveType,
-    updateLeaveType
+    updateLeaveType,
+    // 快取管理相關
+    getCachedUsers,
+    getCachedDepartments,
+    getCachedLeaveTypes,
+    getCachedAttendanceRecords,
+    invalidateCache,
+    sharedData
   };
 
   return (

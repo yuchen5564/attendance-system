@@ -1,6 +1,6 @@
 // 文件位置: src/pages/SettingsPage.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Card, 
   Form, 
@@ -41,8 +41,7 @@ const SettingsPage = () => {
     userData, 
     isAdmin, 
     systemSettings, 
-    updateSystemSettings, 
-    loadSystemSettings,
+    updateSystemSettings,
     addDepartment,
     deleteDepartment,
     updateDepartment,
@@ -91,58 +90,87 @@ const SettingsPage = () => {
   } = usePagination(leaveTypes, 10);
 
   useEffect(() => {
-    if (isAdmin) {
+    let mounted = true;
+    
+    const loadSettings = async () => {
+      if (!isAdmin || !userData || !mounted) return;
+      
+      try {
+        setLoading(true);
+        
+        // 直接調用 systemService，避免使用 context 中的函數
+        const { systemService } = await import('../firebase/systemService');
+        const settings = await systemService.getSystemSettings();
+        
+        if (!mounted) return;
+        
+        // 填充表單
+        if (settings) {
+          fillFormWithSettings(settings);
+        }
+        
+        // 載入部門和請假類型
+        try {
+          const departments = await systemService.getDepartments();
+          if (mounted) setDepartments(departments || []);
+        } catch (error) {
+          console.warn('載入部門資料失敗:', error);
+          if (mounted) setDepartments([]);
+        }
+        
+        try {
+          const leaveTypes = await systemService.getLeaveTypes();
+          if (mounted) setLeaveTypes(leaveTypes || []);
+        } catch (error) {
+          console.warn('載入請假類型資料失敗:', error);
+          if (mounted) setLeaveTypes([]);
+        }
+        
+      } catch (error) {
+        console.error('載入設定失敗:', error);
+        if (mounted) message.error('載入設定失敗: ' + (error.message || '未知錯誤'));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    if (isAdmin && userData) {
       loadSettings();
     }
-  }, [isAdmin]);
 
-  useEffect(() => {
-    // 當系統設定載入後，填入表單和部門列表
-    if (systemSettings) {
-      fillFormWithSettings(systemSettings);
-      const deptList = systemSettings.departments || [];
-      const leaveTypeList = systemSettings.leaveTypes || [];
-      setDepartments(deptList);
-      setLeaveTypes(leaveTypeList);
-      // 當列表更新時，重置分頁
-      resetToFirstPage();
-      resetLeaveTypeToFirstPage();
-    }
-  }, [systemSettings, form, resetToFirstPage, resetLeaveTypeToFirstPage]);
+    return () => {
+      mounted = false;
+    };
+  }, []); // 空依賴數組，只在組件掛載時執行一次
 
-  const loadSettings = async () => {
-    try {
-      setLoading(true);
-      await loadSystemSettings();
-    } catch (error) {
-      console.error('載入設定失敗:', error);
-      message.error('載入設定失敗');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 移除這個 useEffect，因為我們已經在上面的 useEffect 中處理了資料載入
 
   const fillFormWithSettings = (settings) => {
-    form.setFieldsValue({
-      companyName: settings.company?.name || '企業打卡系統',
-      companyAddress: settings.company?.address || '',
-      companyPhone: settings.company?.phone || '',
-      companyEmail: settings.company?.email || '',
-      defaultWorkingHours: [
-        dayjs(settings.workingHours?.defaultStart || '09:00', 'HH:mm'),
-        dayjs(settings.workingHours?.defaultEnd || '18:00', 'HH:mm')
-      ],
-      flexibleWorkingHours: settings.workingHours?.flexible || false,
-      allowEarlyClockIn: settings.attendance?.allowEarlyClockIn || 30,
-      allowLateClockOut: settings.attendance?.allowLateClockOut || 30,
-      autoClockOut: settings.attendance?.autoClockOut || false,
-      requireApproval: settings.leave?.requireApproval !== false, // 預設為 true
-      maxAdvanceDays: settings.leave?.maxAdvanceDays || 30,
-      allowSameDay: settings.leave?.allowSameDay || false,
-      emailNotifications: settings.notifications?.emailNotifications !== false, // 預設為 true
-      reminderTime: dayjs(settings.notifications?.reminderTime || '08:30', 'HH:mm'),
-      weekendReminders: settings.notifications?.weekendReminders || false
-    });
+    try {
+      form.setFieldsValue({
+        companyName: settings?.company?.name || '企業打卡系統',
+        companyAddress: settings?.company?.address || '',
+        companyPhone: settings?.company?.phone || '',
+        companyEmail: settings?.company?.email || '',
+        defaultWorkingHours: [
+          dayjs(settings?.workingHours?.defaultStart || '09:00', 'HH:mm'),
+          dayjs(settings?.workingHours?.defaultEnd || '18:00', 'HH:mm')
+        ],
+        flexibleWorkingHours: settings?.workingHours?.flexible || false,
+        allowEarlyClockIn: settings?.attendance?.allowEarlyClockIn || 30,
+        allowLateClockOut: settings?.attendance?.allowLateClockOut || 30,
+        autoClockOut: settings?.attendance?.autoClockOut || false,
+        requireApproval: settings?.leave?.requireApproval !== false, // 預設為 true
+        maxAdvanceDays: settings?.leave?.maxAdvanceDays || 30,
+        allowSameDay: settings?.leave?.allowSameDay || false,
+        emailNotifications: settings?.notifications?.emailNotifications !== false, // 預設為 true
+        reminderTime: dayjs(settings?.notifications?.reminderTime || '08:30', 'HH:mm'),
+        weekendReminders: settings?.notifications?.weekendReminders || false
+      });
+    } catch (error) {
+      console.error('填充表單失敗:', error);
+      message.error('載入設定表單失敗');
+    }
   };
 
   const handleSave = async (values) => {

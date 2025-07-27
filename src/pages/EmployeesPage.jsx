@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Button, 
   Table, 
@@ -32,7 +32,7 @@ const { Title } = Typography;
 const { Search } = Input;
 
 const EmployeesPage = () => {
-  const { userData, isAdmin } = useAuth();
+  const { userData, isAdmin, getCachedUsers, invalidateCache } = useAuth();
   const { message } = App.useApp();
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState([]);
@@ -52,25 +52,26 @@ const EmployeesPage = () => {
     filterEmployees();
   }, [employees, searchTerm]);
 
-  const loadEmployees = async () => {
+  const loadEmployees = async (forceRefresh = false) => {
     try {
       setLoading(true);
-      const users = await firestoreService.getAllUsers();
+      
+      // 使用快取獲取用戶資料
+      const users = await getCachedUsers(forceRefresh);
       setEmployees(users);
       
-      // 載入主管資料以便顯示主管姓名
+      // 優化: 批量載入主管資料，避免N+1查詢
       const managerData = {};
       const uniqueManagerIds = [...new Set(users.map(user => user.managerId).filter(Boolean))];
       
-      for (const managerId of uniqueManagerIds) {
-        try {
-          const manager = await firestoreService.getUserById(managerId);
+      if (uniqueManagerIds.length > 0) {
+        // 從已載入的用戶資料中查找主管，避免額外API調用
+        uniqueManagerIds.forEach(managerId => {
+          const manager = users.find(user => user.uid === managerId);
           if (manager) {
             managerData[managerId] = manager;
           }
-        } catch (error) {
-          console.warn(`無法載入主管資料 ${managerId}:`, error);
-        }
+        });
       }
       
       setManagers(managerData);
@@ -101,10 +102,16 @@ const EmployeesPage = () => {
 
   const handleCreateEmployee = async (employeeData) => {
     try {
-      await authService.createUser(employeeData);
+      const newEmployee = await authService.createUser(employeeData);
       message.success('員工創建成功');
       setShowModal(false);
-      loadEmployees();
+      
+      // 樂觀更新: 直接添加到本地狀態
+      const employeeWithId = { ...employeeData, uid: newEmployee.uid || Date.now().toString() };
+      setEmployees(prev => [employeeWithId, ...prev]);
+      
+      // 清除用戶快取，確保其他頁面獲取最新資料
+      invalidateCache('users');
     } catch (error) {
       console.error('創建員工失敗:', error);
       if (error.code === 'auth/email-already-in-use') {
@@ -117,20 +124,32 @@ const EmployeesPage = () => {
   };
 
   const handleUpdateEmployee = async (employeeData) => {
+    const originalEmployees = [...employees];
+    
     try {
       if (employeeData.password && employeeData.password.trim()) {
         message.error('安全考量：無法直接修改用戶密碼。請使用密碼重設功能或請用戶自行修改密碼。');
         return;
       }
 
-      await authService.updateUser(employeeData);
-      message.success('員工資料更新成功');
+      // 樂觀更新: 先更新本地狀態
+      setEmployees(prev => 
+        prev.map(emp => emp.uid === employeeData.uid ? { ...emp, ...employeeData } : emp)
+      );
       setShowModal(false);
       setEditingEmployee(null);
-      loadEmployees();
+      
+      await authService.updateUser(employeeData);
+      message.success('員工資料更新成功');
+      
+      // 清除用戶快取
+      invalidateCache('users');
     } catch (error) {
       console.error('更新員工失敗:', error);
       message.error('更新員工失敗');
+      
+      // 發生錯誤時回滾狀態
+      setEmployees(originalEmployees);
       throw error;
     }
   };
@@ -146,17 +165,30 @@ const EmployeesPage = () => {
   };
 
   const handleDeleteEmployee = async (employee) => {
+    const originalEmployees = [...employees];
+    
     try {
+      // 樂觀更新: 先更新本地狀態
+      setEmployees(prev => 
+        prev.map(emp => emp.uid === employee.uid ? { ...emp, isActive: false } : emp)
+      );
+      
       await firestoreService.updateUser(employee.uid, { isActive: false });
       message.success('員工已停用');
-      loadEmployees();
+      
+      // 清除用戶快取
+      invalidateCache('users');
     } catch (error) {
       console.error('刪除員工失敗:', error);
       message.error('操作失敗');
+      
+      // 發生錯誤時回滾狀態
+      setEmployees(originalEmployees);
     }
   };
 
-  const getRoleText = (role) => {
+  // 記憶化角色文字轉換
+  const getRoleText = useCallback((role) => {
     switch (role) {
       case 'admin': 
         return { text: '系統管理員', color: 'red' };
@@ -167,9 +199,10 @@ const EmployeesPage = () => {
       default: 
         return { text: role, color: 'default' };
     }
-  };
+  }, []);
 
-  const columns = [
+  // 記憶化表格欄位
+  const columns = useMemo(() => [
     {
       title: '姓名',
       dataIndex: 'name',
@@ -237,7 +270,7 @@ const EmployeesPage = () => {
         </Tag>
       ),
     },
-  ];
+  ], [getRoleText, managers]);
 
   if (isAdmin) {
     columns.push({
