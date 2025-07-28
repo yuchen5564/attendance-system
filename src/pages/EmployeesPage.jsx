@@ -202,124 +202,128 @@ const EmployeesPage = () => {
   }, []);
 
   // 記憶化表格欄位
-  const columns = useMemo(() => [
-    {
-      title: '姓名',
-      dataIndex: 'name',
-      key: 'name',
-      width: 120,
-      render: (text) => <span style={{ fontWeight: 500 }}>{text}</span>,
-    },
-    {
-      title: '電子郵件',
-      dataIndex: 'email',
-      key: 'email',
-      width: 200,
-    },
-    {
-      title: '部門',
-      dataIndex: 'department',
-      key: 'department',
-      width: 120,
-      render: (text) => text || '-',
-    },
-    {
-      title: '職位',
-      dataIndex: 'position',
-      key: 'position',
-      width: 120,
-      render: (text) => text || '-',
-    },
-    {
-      title: '角色',
-      dataIndex: 'role',
-      key: 'role',
-      width: 120,
-      render: (role) => {
-        const roleInfo = getRoleText(role);
-        return <Tag color={roleInfo.color}>{roleInfo.text}</Tag>;
+  const columns = useMemo(() => {
+    const baseColumns = [
+      {
+        title: '姓名',
+        dataIndex: 'name',
+        key: 'name',
+        width: 120,
+        render: (text) => <span style={{ fontWeight: 500 }}>{text}</span>,
       },
-    },
-    {
-      title: '直屬主管',
-      dataIndex: 'managerId',
-      key: 'managerId',
-      width: 120,
-      render: (managerId) => {
-        if (!managerId) return '-';
-        const manager = managers[managerId];
-        return manager ? manager.name : '載入中...';
+      {
+        title: '電子郵件',
+        dataIndex: 'email',
+        key: 'email',
+        width: 200,
       },
-    },
-    {
-      title: '工作時間',
-      dataIndex: 'workingHours',
-      key: 'workingHours',
-      width: 140,
-      render: (workingHours) => 
-        workingHours ? `${workingHours.start} - ${workingHours.end}` : '-',
-    },
-    {
-      title: '狀態',
-      dataIndex: 'isActive',
-      key: 'isActive',
-      width: 80,
-      render: (isActive) => (
-        <Tag color={isActive !== false ? 'green' : 'red'}>
-          {isActive !== false ? '啟用' : '停用'}
-        </Tag>
-      ),
-    },
-  ], [getRoleText, managers]);
+      {
+        title: '部門',
+        dataIndex: 'department',
+        key: 'department',
+        width: 120,
+        render: (text) => text || '-',
+      },
+      {
+        title: '職位',
+        dataIndex: 'position',
+        key: 'position',
+        width: 120,
+        render: (text) => text || '-',
+      },
+      {
+        title: '角色',
+        dataIndex: 'role',
+        key: 'role',
+        width: 120,
+        render: (role) => {
+          const roleInfo = getRoleText(role);
+          return <Tag color={roleInfo.color}>{roleInfo.text}</Tag>;
+        },
+      },
+      {
+        title: '直屬主管',
+        dataIndex: 'managerId',
+        key: 'managerId',
+        width: 120,
+        render: (managerId) => {
+          if (!managerId) return '-';
+          const manager = managers[managerId];
+          return manager ? manager.name : '載入中...';
+        },
+      },
+      {
+        title: '工作時間',
+        dataIndex: 'workingHours',
+        key: 'workingHours',
+        width: 140,
+        render: (workingHours) => 
+          workingHours ? `${workingHours.start} - ${workingHours.end}` : '-',
+      },
+      {
+        title: '狀態',
+        dataIndex: 'isActive',
+        key: 'isActive',
+        width: 80,
+        render: (isActive) => (
+          <Tag color={isActive !== false ? 'green' : 'red'}>
+            {isActive !== false ? '啟用' : '停用'}
+          </Tag>
+        ),
+      },
+    ];
 
-  if (isAdmin) {
-    columns.push({
-      title: '操作',
-      key: 'action',
-      width: 200,
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => {
-              setEditingEmployee(record);
-              setShowModal(true);
-            }}
-            size="small"
-          >
-            編輯
-          </Button>
-          <Button
-            type="link"
-            icon={<KeyOutlined />}
-            onClick={() => handleResetPassword(record)}
-            size="small"
-          >
-            重設密碼
-          </Button>
-          {/* {record.isActive !== false && (
-            <Popconfirm
-              title="確定要停用此員工嗎？"
-              description="此操作將停用員工帳戶"
-              onConfirm={() => handleDeleteEmployee(record)}
-              okText="確定"
-              cancelText="取消"
+    if (isAdmin) {
+      baseColumns.push({
+        title: '操作',
+        key: 'action',
+        width: 200,
+        render: (_, record) => (
+          <Space size="small">
+            <Button
+              type="link"
+              icon={<EditOutlined />}
+              onClick={() => {
+                setEditingEmployee(record);
+                setShowModal(true);
+              }}
+              size="small"
             >
-              <Button
-                type="link"
-                danger
-                icon={<DeleteOutlined />}
-                size="small"
+              編輯
+            </Button>
+            <Button
+              type="link"
+              icon={<KeyOutlined />}
+              onClick={() => handleResetPassword(record)}
+              size="small"
+            >
+              重設密碼
+            </Button>
+            {/* {record.isActive !== false && (
+              <Popconfirm
+                title="確定要停用此員工嗎？"
+                description="此操作將停用員工帳戶"
+                onConfirm={() => handleDeleteEmployee(record)}
+                okText="確定"
+                cancelText="取消"
               >
-                停用
-              </Button>
-            </Popconfirm>
-          )} */}
-        </Space>
-      ),
-    });
-  }
+                <Button
+                  type="link"
+                  danger
+                  icon={<DeleteOutlined />}
+                  size="small"
+                >
+                  停用
+                </Button>
+              </Popconfirm>
+            )} */}
+          </Space>
+        ),
+      });
+    }
+
+    return baseColumns;
+  }, [getRoleText, managers, isAdmin]);
 
   if (loading) {
     return <LoadingSpinner text="載入員工資料中..." />;
